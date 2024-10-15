@@ -114,6 +114,8 @@ test_that("summariseRecordCount() ageGroup argument works", {
   cdm <- cdmEunomia()
 
   # Check that works ----
+  expect_no_error(summariseRecordCount(cdm, "condition_occurrence", ageGroup = list(c(65, Inf), c(0,64))))
+
   expect_no_error(t <- summariseRecordCount(cdm, "condition_occurrence",
                                              ageGroup = list(">=65" = c(65, Inf), "<65" = c(0,64))))
   x <- t |>
@@ -171,7 +173,8 @@ test_that("summariseRecordCount() ageGroup argument works", {
     dplyr::select("strata_level", "variable_level", "estimate_value") |>
     dplyr::filter(strata_level == "<=20" & variable_level == "1920-01-01 to 1920-12-31") |>
     dplyr::summarise(n = sum(as.numeric(estimate_value))) |>
-    dplyr::pull("n")
+    dplyr::pull("n") |> as.numeric()
+  x
   y <- cdm$condition_occurrence |>
     dplyr::inner_join(cdm[["person"]] |> dplyr::select("person_id"), by = "person_id") |>
     PatientProfiles::addAgeQuery(indexDate = "condition_start_date", ageGroup = list("<=20" = c(0,20))) |>
@@ -180,7 +183,6 @@ test_that("summariseRecordCount() ageGroup argument works", {
     dplyr::summarise(n = dplyr::n()) |>
     dplyr::pull("n") |> as.numeric()
   expect_equal(x,y)
-
 
   PatientProfiles::mockDisconnect(cdm = cdm)
 })

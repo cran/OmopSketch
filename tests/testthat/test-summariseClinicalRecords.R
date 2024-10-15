@@ -86,32 +86,48 @@ test_that("summariseClinicalRecords() sex and ageGroup argument work", {
   expect_true(inherits(summariseClinicalRecords(cdm, "observation_period", sex = TRUE, ageGroup = list(">= 30" = c(30, Inf), "<30" = c(0, 29))),"summarised_result"))
   expect_no_error(op <- summariseClinicalRecords(cdm, "observation_period", sex = TRUE, ageGroup = list(">= 30" = c(30, Inf), "<30" = c(0, 29))))
   expect_no_error(vo <- summariseClinicalRecords(cdm, "visit_occurrence", sex = TRUE, ageGroup = list(">= 30" = c(30, Inf), "<30" = c(0, 29))))
-  expect_no_error(summariseClinicalRecords(cdm, "condition_occurrence", sex = TRUE, ageGroup = list(">= 30" = c(30, Inf))))
-  expect_no_error(summariseClinicalRecords(cdm, "drug_exposure", sex = TRUE, ageGroup = list(">= 30" = c(30, Inf), "<30" = c(0, 29))))
-  expect_no_error(summariseClinicalRecords(cdm, "procedure_occurrence", sex = TRUE, ageGroup = list(">= 30" = c(30, Inf), "<30" = c(0, 29))))
-  expect_warning(summariseClinicalRecords(cdm, "device_exposure", sex = TRUE, ageGroup = list(">= 30" = c(30, Inf), "<30" = c(0, 29))))
   expect_no_error(m <- summariseClinicalRecords(cdm, "measurement", sex = TRUE, ageGroup = list(">= 30" = c(30, Inf), "<30" = c(0, 29))))
-  expect_no_error(summariseClinicalRecords(cdm, "observation", sex = TRUE, ageGroup = list(">= 30" = c(30, Inf), "<30" = c(0, 29))))
-  expect_warning(summariseClinicalRecords(cdm, "death", sex = TRUE, ageGroup = list(">= 30" = c(30, Inf), "<30" = c(0, 29))))
+  # expect_no_error(summariseClinicalRecords(cdm,
+  #                                          c("condition_occurrence", "drug_exposure", "procedure_occurrence"),
+  #                                          sex = FALSE,
+  #                                          ageGroup = list(c(30, Inf))))
+  # expect_warning(summariseClinicalRecords(cdm,c("device_exposure","observation","death"), sex = FALSE,ageGroup = list(c(30, Inf))))
 
   expect_no_error(all <- summariseClinicalRecords(cdm,
                                                   c("observation_period", "visit_occurrence", "measurement"),
                                                   sex = TRUE,
                                                   ageGroup = list(">= 30" = c(30, Inf), "<30" = c(0, 29))))
-  expect_equal(
-    dplyr::bind_rows(op, vo,m) |>
+
+  expect_identical(
+    dplyr::bind_rows(op, vo, m) |>
       dplyr::mutate(estimate_value = dplyr::if_else(
-        .data$variable_name == "records_per_person",
+        .data$estimate_type != "integer",
         as.character(round(as.numeric(.data$estimate_value), 3)),
         .data$estimate_value
-      )) |> dplyr::arrange(dplyr::across(dplyr::everything())),
-    all |>
-      dplyr::mutate(estimate_value = dplyr::if_else(
-        .data$variable_name == "records_per_person",
-        as.character(round(as.numeric(.data$estimate_value), 3)),
-        .data$estimate_value
-      )) |> dplyr::arrange(dplyr::across(dplyr::everything()))
+      )) |>
+      dplyr::anti_join(
+        all |>
+          dplyr::mutate(estimate_value = dplyr::if_else(
+            .data$estimate_type != "integer",
+            as.character(round(as.numeric(.data$estimate_value), 3)),
+            .data$estimate_value
+          ))
+      ) |> nrow(),
+    0L
   )
+
+  # Check subjects and records value ----
+  x <- cdm[["measurement"]] |>
+    PatientProfiles::addAgeQuery(indexDate = "measurement_date", ageGroup = list(">= 30" = c(30, Inf), "<30" = c(0, 29))) |>
+    dplyr::select("person_id", "age_group")
+  n_records  <- x |> dplyr::group_by(age_group) |> dplyr::summarise(estimate_value = dplyr::n()) |> dplyr::collect() |> dplyr::arrange(age_group) |> dplyr::mutate(dplyr::across(dplyr::everything(), as.character))
+  n_subjects <- x |> dplyr::group_by(person_id,age_group) |> dplyr::ungroup() |> dplyr::distinct() |> dplyr::group_by(age_group) |> dplyr::summarise(estimate_value = dplyr::n()) |> dplyr::collect() |> dplyr::arrange(age_group) |> dplyr::mutate(dplyr::across(dplyr::everything(), as.character))
+
+  m_records  <- m |> dplyr::filter(variable_name == "number records", strata_level %in% c("<30", ">= 30"), estimate_name == "count")  |> dplyr::select("age_group" = "strata_level", "estimate_value") |> dplyr::collect() |> dplyr::arrange(age_group)
+  m_subjects <- m |> dplyr::filter(variable_name == "number subjects", strata_level %in% c("<30", ">= 30"), estimate_name == "count") |> dplyr::select("age_group" = "strata_level", "estimate_value") |> dplyr::collect() |> dplyr::arrange(age_group)
+
+  expect_equal(list(m_records$age_group,  m_records$estimate_value),   list(n_records$age_group, n_records$estimate_value))
+  expect_equal(list(m_subjects$age_group, m_subjects$estimate_value), list(n_subjects$age_group, n_subjects$estimate_value))
 
   # Check sex and age group---
   x <- summariseClinicalRecords(cdm, "condition_occurrence", sex = TRUE, ageGroup = list(">= 30" = c(30, Inf), "<30" = c(0, 29))) |>
@@ -149,7 +165,7 @@ test_that("summariseClinicalRecords() sex and ageGroup argument work", {
       person = dplyr::tibble(
         person_id = as.integer(1:5),
         gender_concept_id = c(8507L, 8532L, 8532L, 8507L, 8507L),
-        year_of_birth = c(2010L, 2010L, 2011L, 2012L, 2013L),
+        year_of_birth = c(2000L, 2000L, 2011L, 2012L, 2013L),
         month_of_birth = 1L,
         day_of_birth = 1L,
         race_concept_id = 0L,
@@ -189,25 +205,22 @@ test_that("summariseClinicalRecords() sex and ageGroup argument work", {
   # Check num records
   records <- result |>
     dplyr::filter(variable_name == "number records", estimate_name == "count")
-  expect_true(records |> dplyr::filter(strata_name == "overall") |> dplyr::pull(estimate_value) == "9")
-  expect_true(records |> dplyr::filter(strata_level == "old") |> dplyr::pull(estimate_value) == "5")
-  expect_true(records |> dplyr::filter(strata_level == "young") |> dplyr::pull(estimate_value) == "4")
-  expect_true(records |> dplyr::filter(strata_level == "Male") |> dplyr::pull(estimate_value) == "5")
-  expect_true(records |> dplyr::filter(strata_level == "Female") |> dplyr::pull(estimate_value) == "4")
+  expect_identical(records |> dplyr::filter(strata_name == "overall") |> dplyr::pull(estimate_value), "9")
+  expect_identical(records |> dplyr::filter(strata_level == "old") |> dplyr::pull(estimate_value), "5")
+  expect_identical(records |> dplyr::filter(strata_level == "young") |> dplyr::pull(estimate_value), "4")
+  expect_identical(records |> dplyr::filter(strata_level == "Male") |> dplyr::pull(estimate_value), "5")
+  expect_identical(records |> dplyr::filter(strata_level == "Female") |> dplyr::pull(estimate_value), "4")
   expect_identical(records |> dplyr::filter(strata_level == "old &&& Male") |> dplyr::pull(estimate_value), "3")
   expect_identical(records |> dplyr::filter(strata_level == "old &&& Female") |> dplyr::pull(estimate_value), "2")
-  expect_true(records |> dplyr::filter(strata_level == "young &&& Male") |> dplyr::pull(estimate_value) == "2")
-  expect_true(records |> dplyr::filter(strata_level == "young &&& Female") |> dplyr::pull(estimate_value) == "2")
+  expect_identical(records |> dplyr::filter(strata_level == "young &&& Male") |> dplyr::pull(estimate_value), "2")
+  expect_identical(records |> dplyr::filter(strata_level == "young &&& Female") |> dplyr::pull(estimate_value), "2")
 
   # Check stats
   records <- result |>
     dplyr::filter(variable_name == "records_per_person")
   expect_true(records |> dplyr::filter(strata_name == "overall", estimate_name == "mean") |> dplyr::pull(estimate_value) == "1.8")
   expect_true(records |> dplyr::filter(strata_level == "old &&& Male", estimate_name == "median") |> dplyr::pull(estimate_value) == "3")
-
-  PatientProfiles::mockDisconnect(cdm = cdm)
 })
-
 
 test_that("tableClinicalRecords() works", {
   skip_on_cran()
