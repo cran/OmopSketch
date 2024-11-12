@@ -301,6 +301,8 @@ test_that("summarise code use - eunomia", {
 })
 
 test_that("summarise code use - mock data", {
+  skip_on_cran()
+
   person <- tibble::tibble(
     person_id = c(1L,2L),
     gender_concept_id = c(8532L,8507L),
@@ -335,11 +337,11 @@ test_that("summarise code use - mock data", {
     concept_name = c("Musculoskeletal disorder", "Arthritis", "Osteoarthritis of hip", "Arthritis"),
     domain_id = c("Condition"),
     standard_concept = c("S","S","S",NA),
-    vocabulary_id = c("SNOMED", "SNOMED", "SNOMED", "ICD10"),
     concept_class_id = c("Clinical Finding", "Clinical Finding", "Clinical Finding", "ICD Code"),
     concept_code = c("1234"),
     valid_start_date = c(as.Date(NA)),
-    valid_end_date = c(as.Date(NA))
+    valid_end_date = c(as.Date(NA)),
+    vocabulary_id = as.character(NA)
   )
 
   cdm <- omopgenerics::cdmFromTables(

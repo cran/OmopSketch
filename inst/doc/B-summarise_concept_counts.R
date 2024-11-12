@@ -15,7 +15,6 @@ library(CDMConnector)
 library(DBI)
 library(duckdb)
 library(OmopSketch)
-library(CodelistGenerator)
 
 # Connect to Eunomia database
 con <- DBI::dbConnect(duckdb::duckdb(), CDMConnector::eunomia_dir())
@@ -26,22 +25,9 @@ cdm <- CDMConnector::cdmFromCon(
 cdm 
 
 ## ----warning=FALSE------------------------------------------------------------
-acetaminophen <- getCandidateCodes(
-  cdm = cdm,
-  keywords = "acetaminophen",
-  domains = "Drug",
-  includeDescendants = TRUE
-) |>
-  dplyr::pull("concept_id")
+acetaminophen <- c(1125315,1127078, 1127433, 19133768, 40229134, 40231925, 40162522)
 
-sinusitis <- getCandidateCodes(
-  cdm = cdm,
-  keywords = "sinusitis",
-  domains = "Condition",
-  includeDescendants = TRUE
-) |>
-  dplyr::pull("concept_id")
-
+sinusitis <- c(4294548, 40481087, 4283893, 257012)
 
 ## ----warning=FALSE------------------------------------------------------------
 summariseConceptCounts(cdm,

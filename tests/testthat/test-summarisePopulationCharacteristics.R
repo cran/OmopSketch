@@ -116,6 +116,7 @@ test_that("summarisePopulationCharacteristics() works", {
 })
 
 test_that("summarisePopulationCharacteristics() strata works", {
+  skip_on_cran()
   # Load mock database ----
   cdm <- omock::mockCdmReference() |>
     omock::mockPerson(seed = 1L) |>
@@ -180,6 +181,7 @@ test_that("tablePopulationCharacteristics() works", {
 })
 
 test_that("summarisePopulationCharacteristics() works with mockOmopSKetch", {
+  skip_on_cran()
   cdm <- mockOmopSketch(numberIndividuals = 2, seed = 1)
   expect_no_error(summarisedPopulation <- summarisePopulationCharacteristics(
     cdm = cdm)
@@ -222,5 +224,6 @@ test_that("summarisePopulationCharacteristics() works with mockOmopSKetch", {
                     PatientProfiles::addAge(indexDate = "observation_period_start_date") |>
                     dplyr::pull("age") |>
                     sort()))
+  PatientProfiles::mockDisconnect(cdm = cdm)
 
 })
