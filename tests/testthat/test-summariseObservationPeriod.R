@@ -1,11 +1,6 @@
 test_that("check summariseObservationPeriod works", {
   skip_on_cran()
 
-  # helper function
-  removeSettings <- function(x) {
-    attr(x, "settings") <- NULL
-    return(x)
-  }
   nPoints <- 512
 
   # Load mock database
@@ -50,9 +45,10 @@ test_that("check summariseObservationPeriod works", {
                                             "median", "q75", "q95", "max")))
   expect_equal(
     resAllD |> dplyr::filter(!is.na(variable_level)) |>
-      dplyr::mutate(estimate_value = as.numeric(estimate_value)) |> removeSettings(),
+      dplyr::mutate(estimate_value = as.numeric(estimate_value)),
     resAll |> dplyr::filter(!is.na(variable_level)) |>
-      dplyr::mutate(estimate_value = as.numeric(estimate_value)) |> removeSettings()
+      dplyr::mutate(estimate_value = as.numeric(estimate_value)),
+    ignore_attr = TRUE
   )
 
   # test estimates
@@ -61,16 +57,16 @@ test_that("check summariseObservationPeriod works", {
       summariseObservationPeriod(estimates = c("mean", "median")))
   expect_true(all(
     resEst |>
-      dplyr::filter(!.data$variable_name %in% c("number records", "number subjects")) |>
+      dplyr::filter(!.data$variable_name %in% c("Number records", "Number subjects")) |>
       dplyr::pull("estimate_name") |>
       unique() %in% c("mean", "median")
   ))
 
   # counts
-  expect_identical(resAll$estimate_value[resAll$variable_name == "number records"], "8")
+  expect_identical(resAll$estimate_value[resAll$variable_name == "Number records"], "8")
   x <- dplyr::tibble(
-    group_level = c("overall", "1st", "2nd", "3rd"),
-    variable_name = "number subjects",
+    group_level = c("all", "1st", "2nd", "3rd"),
+    variable_name = "Number subjects",
     estimate_value = c("4", "4", "3", "1"))
   expect_identical(nrow(x), resAll |> dplyr::inner_join(x, by = colnames(x)) |> nrow())
 
@@ -78,7 +74,7 @@ test_that("check summariseObservationPeriod works", {
   expect_identical(
     resAll |>
       dplyr::filter(
-        variable_name == "records per person", estimate_name == "mean") |>
+        variable_name == "Records per person", estimate_name == "mean") |>
       dplyr::pull("estimate_value"),
     "2"
   )
@@ -86,27 +82,27 @@ test_that("check summariseObservationPeriod works", {
   # duration
   expect_identical(
     resAll |>
-      dplyr::filter(variable_name == "duration in days", estimate_name == "mean") |>
+      dplyr::filter(variable_name == "Duration in days", estimate_name == "mean") |>
       dplyr::pull("estimate_value"),
-    as.character(c(
-      mean(c(20, 6, 113, 144, 18, 9, 29, 276)), mean(c(20, 18, 9, 276)),
-      mean(c(6, 29, 144)), 113
-    ))
+    as.character(c( mean(c(20, 6, 113, 144, 18, 9, 29, 276)),
+      mean(c(20, 18, 9, 276)),
+      mean(c(6, 29, 144)), 113)
+    )
   )
 
   # days to next observation period
   expect_identical(
     resAll |>
-      dplyr::filter(variable_name == "days to next observation period", estimate_name == "mean") |>
+      dplyr::filter(variable_name == "Days to next observation period", estimate_name == "mean") |>
       dplyr::pull("estimate_value"),
-    as.character(c(
-      mean(c(5, 32, 136, 26)), mean(c(5, 32, 136)), 26, NA
+    as.character(c( mean(c(5, 32, 136, 26)),
+      mean(c(5, 32, 136)), 26, NA
     ))
   )
 
   # duration - density
   xx <- resAllD |>
-    dplyr::filter(variable_name == "duration in days", !is.na(variable_level)) |>
+    dplyr::filter(variable_name == "Duration in days", !is.na(variable_level)) |>
     dplyr::group_by(group_level) |>
     dplyr::summarise(
       n = dplyr::n(),
@@ -120,7 +116,7 @@ test_that("check summariseObservationPeriod works", {
 
   # days to next observation period - density
   xx <- resAll |>
-    dplyr::filter(variable_name == "days to next observation period",
+    dplyr::filter(variable_name == "Days to next observation period",
                   !is.na(variable_level)) |>
     dplyr::group_by(group_level) |>
     dplyr::summarise(
@@ -143,10 +139,10 @@ test_that("check summariseObservationPeriod works", {
   expect_no_error(resOne <- summariseObservationPeriod(cdm$observation_period))
 
   # counts
-  expect_identical(resOne$estimate_value[resOne$variable_name == "number records"], "4")
+  expect_identical(resOne$estimate_value[resOne$variable_name == "Number records"], "4")
   x <- dplyr::tibble(
-    group_level = c("overall", "1st"),
-    variable_name = "number subjects",
+    group_level = c("all", "1st"),
+    variable_name = "Number subjects",
     estimate_value = c("4", "4"))
   expect_identical(nrow(x), resOne |> dplyr::inner_join(x, by = colnames(x)) |> nrow())
 
@@ -176,97 +172,97 @@ test_that("check summariseObservationPeriod works", {
   expect_no_error(
     resAll |>
       plotObservationPeriod(
-        variableName = "number subjects", plotType = "barplot")
+        variableName = "Number subjects", plotType = "barplot")
   )
   expect_error(
     resAll |>
       plotObservationPeriod(
-        variableName = "number subjects", plotType = "boxplot")
+        variableName = "Number subjects", plotType = "boxplot")
   )
   expect_error(
     resAll |>
       plotObservationPeriod(
-        variableName = "number subjects", plotType = "densityplot")
+        variableName = "Number subjects", plotType = "densityplot")
   )
   expect_error(
     resAll |>
       plotObservationPeriod(
-        variableName = "number subjects", plotType = "random")
+        variableName = "Number subjects", plotType = "random")
   )
   expect_error(
     resAll |>
       plotObservationPeriod(
-        variableName = "duration in days", plotType = "barplot")
+        variableName = "Duration in days", plotType = "barplot")
   )
   expect_no_error(
     resAll |>
       plotObservationPeriod(
-        variableName = "duration in days", plotType = "boxplot")
+        variableName = "Duration in days", plotType = "boxplot")
   )
   expect_error(
     resAllN |>
       plotObservationPeriod(
-        variableName = "duration in days", plotType = "densityplot")
+        variableName = "Duration in days", plotType = "densityplot")
   )
   expect_no_error(
     resAllD |>
       plotObservationPeriod(
-        variableName = "duration in days", plotType = "densityplot")
+        variableName = "Duration in days", plotType = "densityplot")
   )
   expect_error(
     resAll |>
       plotObservationPeriod(
-        variableName = "duration in days", plotType = "random")
+        variableName = "Duration in days", plotType = "random")
   )
   expect_error(
     resAll |>
       plotObservationPeriod(
-        variableName = "records per person", plotType = "barplot")
+        variableName = "Records per person", plotType = "barplot")
   )
   expect_no_error(
     resAll |>
       plotObservationPeriod(
-        variableName = "records per person", plotType = "boxplot")
+        variableName = "Records per person", plotType = "boxplot")
   )
   expect_error(
     resAllN |>
       plotObservationPeriod(
-        variableName = "records per person", plotType = "densityplot")
+        variableName = "Records per person", plotType = "densityplot")
   )
   expect_no_error(
     resAllD |>
       plotObservationPeriod(
-        variableName = "records per person", plotType = "densityplot")
+        variableName = "Records per person", plotType = "densityplot")
   )
   expect_error(
     resAll |>
       plotObservationPeriod(
-        variableName = "records per person", plotType = "random")
+        variableName = "Records per person", plotType = "random")
   )
   expect_error(
     resAll |>
       plotObservationPeriod(
-        variableName = "days to next observation period", plotType = "barplot")
+        variableName = "Days to next observation period", plotType = "barplot")
   )
   expect_no_error(
     resAll |>
       plotObservationPeriod(
-        variableName = "days to next observation period", plotType = "boxplot")
+        variableName = "Days to next observation period", plotType = "boxplot")
   )
   expect_error(
     resAllN |>
       plotObservationPeriod(
-        variableName = "days to next observation period", plotType = "densityplot")
+        variableName = "Days to next observation period", plotType = "densityplot")
   )
   expect_no_error(
     resAllD |>
       plotObservationPeriod(
-        variableName = "days to next observation period", plotType = "densityplot")
+        variableName = "Days to next observation period", plotType = "densityplot")
   )
   expect_error(
     resAll |>
       plotObservationPeriod(
-        variableName = "days to next observation period", plotType = "random")
+        variableName = "Days to next observation period", plotType = "random")
   )
 
   PatientProfiles::mockDisconnect(cdm = cdm)
@@ -279,10 +275,10 @@ test_that("check it works with mockOmopSketch", {
   sop <- summariseObservationPeriod(cdm$observation_period)
 
   # counts
-  expect_identical(sop$estimate_value[sop$variable_name == "number records"], "5")
+  expect_identical(sop$estimate_value[sop$variable_name == "Number records"], "5")
   x <- dplyr::tibble(
     strata_level = c("overall", "1st"),
-    variable_name = "number subjects",
+    variable_name = "Number subjects",
     estimate_value = c("5","5"))
   expect_identical(nrow(x), sop |> dplyr::inner_join(x, by = colnames(x)) |> nrow())
 
@@ -290,7 +286,7 @@ test_that("check it works with mockOmopSketch", {
   expect_identical(
     sop |>
       dplyr::filter(
-        variable_name == "records per person", estimate_name != "sd", !grepl("density", estimate_name)) |>
+        variable_name == "Records per person", estimate_name != "sd", !grepl("density", estimate_name)) |>
       dplyr::pull("estimate_value"),
     c(rep("1",8))
   )
@@ -298,7 +294,7 @@ test_that("check it works with mockOmopSketch", {
   # duration
   expect_identical(
     sop |>
-      dplyr::filter(variable_name == "duration in days", estimate_name %in% c("min","q25","median","q75","max")) |>
+      dplyr::filter(variable_name == "Duration in days", estimate_name %in% c("min","q25","median","q75","max")) |>
       dplyr::pull("estimate_value") |>
       unique() |>
       sort(),
@@ -314,9 +310,7 @@ test_that("check it works with mockOmopSketch", {
   # days to next observation period
   expect_identical(
     sop |>
-      dplyr::filter(variable_name == "days to next observation period", estimate_name == "mean") |>
-      dplyr::pull("estimate_value"),
-    as.character(c(NA,NA))
+      dplyr::filter(variable_name == "Days to next observation period")|>nrow(), 0L
   )
 
   # Check result type
@@ -334,12 +328,8 @@ test_that("check it works with mockOmopSketch", {
 
 test_that("check summariseObservationPeriod strata works", {
   skip_on_cran()
-
   # helper function
-  removeSettings <- function(x) {
-    attr(x, "settings") <- NULL
-    return(x)
-  }
+
   nPoints <- 512
 
   # Load mock database
@@ -384,6 +374,9 @@ test_that("check summariseObservationPeriod strata works", {
                                                        estimates = c("mean", "sd", "min", "max", "median", "density"),
                                                        ageGroup = list("<10" = c(0,9), ">=10" = c(10, Inf)),
                                                        sex = TRUE))
+  expect_equal(resStrata|>dplyr::filter(group_level == "all" & strata_level == "overall")|>dplyr::distinct(variable_name),
+               resStrata|>dplyr::filter(group_level == "all" & strata_level != "overall")|>dplyr::distinct(variable_name))
+
   # test overall
   x <- resStrata |>
     dplyr::filter(strata_name == "overall", strata_level == "overall") |>
@@ -396,23 +389,26 @@ test_that("check summariseObservationPeriod strata works", {
 
   # check strata groups have the expected value
   expect_identical(resStrata |>
-    dplyr::filter(variable_name == "number subjects",
+    dplyr::filter(variable_name == "Number subjects",
                   strata_level == "Female",
                   group_level == "2nd") |>
     dplyr::pull("estimate_value"),"2")
 
   expect_identical(resStrata |>
-                     dplyr::filter(variable_name == "number subjects",
-                                   strata_level == ">=10 &&& Male",
+                     omopgenerics::splitStrata() |>
+                     dplyr::filter(variable_name == "Number subjects",
+                                   sex == "Male",
+                                   age_group == ">=10",
                                    group_level == "3rd") |>
                      dplyr::pull("estimate_value"),"1")
 
   # duration
   expect_identical(
     resStrata |>
-      dplyr::filter(variable_name == "duration in days", estimate_name == "mean", strata_level == ">=10") |>
+      dplyr::filter(variable_name == "Duration in days", estimate_name == "mean", strata_level == ">=10") |>
       dplyr::pull("estimate_value"),
     as.character(c(
+      mean(c(20, 18, 6, 144, 113)),
       mean(c(20, 18)),
       mean(c(6, 144)),
       mean(113)))
@@ -420,9 +416,10 @@ test_that("check summariseObservationPeriod strata works", {
 
   expect_identical(
     resStrata |>
-      dplyr::filter(variable_name == "duration in days", estimate_name == "mean", strata_level == "<10") |>
+      dplyr::filter(variable_name == "Duration in days", estimate_name == "mean", strata_level == "<10") |>
       dplyr::pull("estimate_value"),
     as.character(c(
+      mean(c(9, 276, 29)),
       mean(c(9, 276)),
       mean(c(29))))
   )
@@ -430,10 +427,92 @@ test_that("check summariseObservationPeriod strata works", {
   # days to next observation period
   expect_identical(
     resStrata |>
-      dplyr::filter(variable_name == "days to next observation period", estimate_name == "mean",
-                    strata_level == "<10 &&& Female", group_level == "1st") |>
+      omopgenerics::splitStrata() |>
+      dplyr::filter(variable_name == "Days to next observation period", estimate_name == "mean",
+                    sex == "Female", age_group == "<10", group_level == "1st") |>
       dplyr::pull("estimate_value"), "32"
+  )
+
+  expect_no_error(x<-summariseObservationPeriod(cdm$observation_period, estimates = "density", sex = TRUE, ageGroup = list(c(0,9), c(10, Inf))))
+  expect_no_error(
+    x |>
+      plotObservationPeriod(
+        variableName = "Duration in days", plotType = "densityplot", colour = "sex", facet = "age_group")
+  )
+
+  expect_no_error(
+    x |>
+      plotObservationPeriod(
+        variableName = "Days to next observation period", plotType = "densityplot", colour = "sex", facet = "age_group")
+  )
+  expect_no_error(
+    x |>
+      plotObservationPeriod(
+        variableName = "Records per person", plotType = "densityplot", colour = "sex", facet = "age_group")
+  )
+
+  expect_error(x |>
+                 plotObservationPeriod(
+                   variableName = "Number records", plotType = "densityplot", colour = "sex", facet = "age_group"))
+  y<-summariseObservationPeriod(cdm$observation_period, estimates = "mean", sex = TRUE, ageGroup = list(c(0,9), c(10, Inf)))
+  expect_error(
+    y |>
+      plotObservationPeriod(
+        variableName = "Records per person", plotType = "densityplot", colour = "sex", facet = "age_group")
   )
 
   PatientProfiles::mockDisconnect(cdm = cdm)
 })
+
+
+test_that("dateRnge argument works", {
+  skip_on_cran()
+  # Load mock database ----
+  cdm <- cdmEunomia()
+  expect_warning( summariseObservationPeriod(cdm$observation_period, dateRange =  as.Date(c("2012-01-01", "2018-01-01"))))
+
+  expect_no_error(summariseObservationPeriod(cdm$observation_period, dateRange =  as.Date(c("1940-01-01", "2018-01-01"))))
+  expect_message(x<-summariseObservationPeriod(cdm$observation_period, dateRange =  as.Date(c("1940-01-01", "2024-01-01")), estimates = "min" ))
+  observationRange <- cdm$observation_period |>
+    dplyr::summarise(minobs = min(.data$observation_period_start_date, na.rm = TRUE),
+                     maxobs = max(.data$observation_period_end_date, na.rm = TRUE))
+  expect_no_error(y<-  summariseObservationPeriod(cdm$observation_period, dateRange = as.Date(c("1940-01-01", observationRange |>dplyr::pull("maxobs"))),estimates = "min" ))
+  expect_equal(x,y, ignore_attr = TRUE)
+  expect_false(settings(x)$study_period_end==settings(y)$study_period_end)
+  expect_error( summariseObservationPeriod(cdm$observation_period, dateRange =  as.Date(c("2015-01-01", "2014-01-01"))))
+  expect_warning(z<- summariseObservationPeriod(cdm$observation_period, dateRange =  as.Date(c("2020-01-01", "2021-01-01"))))
+  expect_equal(z, omopgenerics::emptySummarisedResult(), ignore_attr = TRUE)
+  expect_equal( summariseObservationPeriod(cdm$observation_period,dateRange = as.Date(c("1940-01-01",NA)), estimates = "min"), y, ignore_attr = TRUE)
+  checkResultType(z, "summarise_observation_period")
+  expect_equal(colnames(settings(z)), colnames(settings(x)))
+
+
+
+
+  PatientProfiles::mockDisconnect(cdm = cdm)
+})
+
+
+test_that("no tables created", {
+  skip_on_cran()
+  # Load mock database ----
+  cdm <- cdmEunomia()
+
+  startNames <- CDMConnector::listSourceTables(cdm)
+
+  results <- summariseObservationPeriod(cdm$observation_period,
+                                       sex = TRUE,
+                                       ageGroup = list(c(0,17),
+                                                       c(18,65),
+                                                       c(66, 100)),
+                                       dateRange = as.Date(c("2012-01-01", "2018-01-01")))
+
+
+  endNames <- CDMConnector::listSourceTables(cdm)
+
+  expect_true(length(setdiff(endNames, startNames)) == 0)
+
+
+  PatientProfiles::mockDisconnect(cdm = cdm)
+})
+

@@ -5,8 +5,6 @@
 #' @return A gt or flextable object with the summarised data.
 #' @export
 #' @examples
-#' \donttest{
-#' library(OmopSketch)
 #' cdm <- mockOmopSketch(numberIndividuals = 10)
 #'
 #' result <- summariseOmopSnapshot(cdm)
@@ -15,16 +13,16 @@
 #'   tableOmopSnapshot()
 #'
 #' PatientProfiles::mockDisconnect(cdm)
-#' }
 tableOmopSnapshot <- function(result,
                               type = "gt") {
   # initial checks
+  rlang::check_installed("visOmopResults")
   omopgenerics::validateResultArgument(result)
   omopgenerics::assertChoice(type, choicesTables())
 
   # subset to result_type of interest
   result <- result |>
-    visOmopResults::filterSettings(
+    omopgenerics::filterSettings(
       .data$result_type == "summarise_omop_snapshot")
 
   # check if it is empty

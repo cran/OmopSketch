@@ -2,16 +2,17 @@
 % Please edit documentation in R/summariseConceptCounts.R
 \name{summariseConceptCounts}
 \alias{summariseConceptCounts}
-\title{Summarise code use in patient-level data}
+\title{Summarise concept counts in patient-level data. Only concepts recorded during observation period are counted.}
 \usage{
 summariseConceptCounts(
   cdm,
   conceptId,
   countBy = c("record", "person"),
   concept = TRUE,
-  year = FALSE,
+  interval = "overall",
   sex = FALSE,
-  ageGroup = NULL
+  ageGroup = NULL,
+  dateRange = NULL
 )
 }
 \arguments{
@@ -24,31 +25,20 @@ person-level counts}
 
 \item{concept}{TRUE or FALSE. If TRUE code use will be summarised by concept.}
 
-\item{year}{TRUE or FALSE. If TRUE code use will be summarised by year.}
+\item{interval}{Time interval to stratify by. It can either be "years", "quarters", "months" or "overall".}
 
 \item{sex}{TRUE or FALSE. If TRUE code use will be summarised by sex.}
 
 \item{ageGroup}{A list of ageGroup vectors of length two. Code use will be
 thus summarised by age groups.}
+
+\item{dateRange}{A list containing the minimum and the maximum dates
+defining the time range within which the analysis is performed.}
 }
 \value{
 A summarised_result object with results overall and, if specified, by
 strata.
 }
 \description{
-Summarise code use in patient-level data
-}
-\examples{
-\donttest{
-
-cdm <- mockOmopSketch()
-
-cs <- list(sumatriptan = c(35604883, 35604879, 35604880, 35604884))
-
-results <- summariseConceptCounts(cdm, conceptId = cs)
-
-results
-
-PatientProfiles::mockDisconnect(cdm)
-}
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
 }

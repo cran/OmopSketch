@@ -84,20 +84,19 @@ summarisedResult |>
   tableClinicalRecords()
 
 ## ----warning=FALSE------------------------------------------------------------
-summarisedResult <- summariseRecordCount(cdm, "drug_exposure", unit = "year", unitInterval = 1)
+summarisedResult <- summariseRecordCount(cdm, "drug_exposure", interval = "years")
 
 summarisedResult |> print()
 
 summarisedResult |> plotRecordCount()
 
 ## ----warning=FALSE------------------------------------------------------------
-summariseRecordCount(cdm, "drug_exposure", unit = "month", unitInterval = 18) |> 
+summariseRecordCount(cdm, "drug_exposure", interval = "months") |> 
   plotRecordCount()
 
 ## ----warning=FALSE------------------------------------------------------------
 summariseRecordCount(cdm, "drug_exposure",
-                      unit = "month", 
-                      unitInterval = 18, 
+                      interval = "months",
                       sex = TRUE, 
                       ageGroup = list("<30" = c(0,29),
                                      ">=30" = c(30,Inf))) |> 
@@ -105,8 +104,7 @@ summariseRecordCount(cdm, "drug_exposure",
 
 ## ----warning=FALSE------------------------------------------------------------
 summariseRecordCount(cdm, "drug_exposure",
-                     unit = "month", 
-                     unitInterval = 18, 
+                     interval = "months", 
                      sex = TRUE,
                      ageGroup = list("0-29" = c(0,29),
                                      "30-Inf" = c(30,Inf)))  |>
@@ -114,8 +112,7 @@ summariseRecordCount(cdm, "drug_exposure",
 
 ## ----warning=FALSE------------------------------------------------------------
 summariseRecordCount(cdm, "drug_exposure",
-                     unit = "month", 
-                     unitInterval = 18, 
+                     interval = "months",
                      sex = TRUE,
                      ageGroup = list("0-29" = c(0,29),
                                      "30-Inf" = c(30,Inf))) |>

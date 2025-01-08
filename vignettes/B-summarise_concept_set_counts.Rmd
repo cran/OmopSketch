@@ -27,7 +27,7 @@ if (!eunomia_is_available()) downloadEunomiaData()
 
 # Introduction
 
-In this vignette, we will explore the *OmopSketch* functions designed to provide information about the number of counts of specific concepts. Specifically, there are two key functions that facilitate this, `summariseConceptCounts()` and `plotConceptCounts()`. The former one creates a summary statistics results with the number of counts per each concept, and the latter one creates a histogram plot.
+In this vignette, we will explore the *OmopSketch* functions designed to provide information about the number of counts of specific concepts. Specifically, there are two key functions that facilitate this, `summariseConceptSetCounts()` and `plotConceptCounts()`. The former one creates a summary statistics results with the number of counts per each concept, and the latter one creates a histogram plot.
 
 ## Create a mock cdm
 
@@ -39,6 +39,7 @@ library(CDMConnector)
 library(DBI)
 library(duckdb)
 library(OmopSketch)
+library(CodelistGenerator)
 
 # Connect to Eunomia database
 con <- DBI::dbConnect(duckdb::duckdb(), CDMConnector::eunomia_dir())
@@ -51,27 +52,40 @@ cdm
 
 # Summarise concept counts
 
-First, let's generate a list of codes for the concept `acetaminophen` and `sinusitis.
+First, let's generate a list of codes for the concept `dementia` using [CodelistGenerator](https://darwin-eu.github.io/CodelistGenerator/index.html) package.
 
 ```{r, warning=FALSE}
-acetaminophen <- c(1125315,1127078, 1127433, 19133768, 40229134, 40231925, 40162522)
+acetaminophen <- getCandidateCodes(
+  cdm = cdm,
+  keywords = "acetaminophen",
+  domains = "Drug",
+  includeDescendants = TRUE
+) |>
+  dplyr::pull("concept_id")
 
-sinusitis <- c(4294548, 40481087, 4283893, 257012)
+sinusitis <- getCandidateCodes(
+  cdm = cdm,
+  keywords = "sinusitis",
+  domains = "Condition",
+  includeDescendants = TRUE
+) |>
+  dplyr::pull("concept_id")
+
 ```
 
-Now we want to explore the occurrence of these concepts within the database. For that, we can use `summariseConceptCounts()` from OmopSketch:
+Now we want to explore the occurrence of these concepts within the database. For that, we can use `summariseConceptSetCounts()` from OmopSketch:
 
 ```{r, warning=FALSE} 
-summariseConceptCounts(cdm,
-                       conceptId = list("acetaminophen" = acetaminophen,                          
+summariseConceptSetCounts(cdm,
+                       conceptSet = list("acetaminophen" = acetaminophen,                          
                                         "sinusitis" = sinusitis)) |>   
   select(group_level, variable_name, variable_level, estimate_name, estimate_value) |>   
   glimpse() 
 ``` 
 By default, the function will provide information about either the number of records (`estimate_name == "record_count"`) for each concept_id or the number of people (`estimate_name == "person_count"`): 
 ```{r, warning=FALSE}
-summariseConceptCounts(cdm, 
-                       conceptId = list("acetaminophen" = acetaminophen, 
+summariseConceptSetCounts(cdm, 
+                       conceptSet = list("acetaminophen" = acetaminophen, 
                                         "sinusitis" = sinusitis), 
                        countBy = c("record","person")) |>
   select(group_level, variable_name, estimate_name) |>
@@ -83,8 +97,8 @@ summariseConceptCounts(cdm,
 However, we can specify which one is of interest using `countBy` argument:
 
 ```{r, warning=FALSE}
-summariseConceptCounts(cdm, 
-                       conceptId = list("acetaminophen" = acetaminophen,
+summariseConceptSetCounts(cdm, 
+                       conceptSet = list("acetaminophen" = acetaminophen,
                                         "sinusitis" = sinusitis),
                        countBy = "record") |>
   select(group_level, variable_name, estimate_name) |>
@@ -95,43 +109,50 @@ summariseConceptCounts(cdm,
 One can further stratify by year, sex or age group using the `year`, `sex`, and `ageGroup` arguments.
 
 ``` {r, warning=FALSE} 
-summariseConceptCounts(cdm,                         conceptId = list("acetaminophen" = acetaminophen,                                         "sinusitis" = sinusitis),                        countBy = "person",                        year = TRUE,                        sex  = TRUE,                        ageGroup = list("<=50" = c(0,50), ">50" = c(51,Inf))) |>   select(group_level, strata_level, variable_name, estimate_name) |>   glimpse() 
+summariseConceptSetCounts(cdm,
+                       conceptSet = list("acetaminophen" = acetaminophen,
+                                        "sinusitis" = sinusitis),
+                       countBy = "person",
+                       interval = "years",
+                       sex  = TRUE,  
+                       ageGroup = list("<=50" = c(0,50), ">50" = c(51,Inf))) |>   
+  select(group_level, strata_level, variable_name, estimate_name) |>   glimpse() 
 ```
 
 ## Visualise the results 
 Finally, we can visualise the concept counts using `plotRecordCounts()`. 
 
 ```{r, warning=FALSE} 
-summariseConceptCounts(cdm, 
-                       conceptId = list("sinusitis" = sinusitis), 
+summariseConceptSetCounts(cdm, 
+                       conceptSet = list("sinusitis" = sinusitis), 
                        countBy = "person") |> 
-  plotConceptCounts()
+  plotConceptSetCounts()
 
 ```         
 Notice that either person counts or record counts can be plotted. If both have been included in the summarised result, you will have to filter to only include one variable at time:
 
 ```{r, warning=FALSE}
-summariseConceptCounts(cdm, 
-                       conceptId = list("sinusitis" = sinusitis),
+summariseConceptSetCounts(cdm, 
+                       conceptSet = list("sinusitis" = sinusitis),
                        countBy = c("person","record")) |>
-  filter(estimate_name == "person_count") |>
-  plotConceptCounts()
+  filter(variable_name == "Number subjects") |>
+  plotConceptSetCounts()
 ```
 
 Additionally, if results were stratified by year, sex or age group, we can further use `facet` or `colour` arguments to highlight the different results in the plot. To help us identify by which variables we can colour or facet by, we can use [visOmopResult](https://darwin-eu.github.io/visOmopResults/) package.
 
 ```{r, warning=FALSE}
-summariseConceptCounts(cdm, 
-                       conceptId = list("sinusitis" = sinusitis),
+summariseConceptSetCounts(cdm, 
+                       conceptSet = list("sinusitis" = sinusitis),
                        countBy = c("person"),
                        sex = TRUE, 
                        ageGroup = list("<=50" = c(0,50), ">50" = c(51, Inf))) |>
   visOmopResults::tidyColumns()
 
-summariseConceptCounts(cdm, 
-                       conceptId = list("sinusitis" = sinusitis),
+summariseConceptSetCounts(cdm, 
+                       conceptSet = list("sinusitis" = sinusitis),
                        countBy = c("person"),
                        sex = TRUE, 
-                       ageGroup = list("<=50" = c(0,50), ">50" = c(51, Inf)))|>
-  plotConceptCounts(facet = "sex", colour = "age_group")
+                       ageGroup = list("<=50" = c(0,50), ">50" = c(51, Inf))) |>
+  plotConceptSetCounts(facet = "sex", colour = "age_group")
 ```

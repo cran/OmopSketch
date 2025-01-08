@@ -1,30 +1,12 @@
-startDate <- function(name) {
-  tables$start_date[tables$table_name == name]
-}
-endDate <- function(name) {
-  tables$end_date[tables$table_name == name]
-}
-standardConcept <- function(name) {
-  tables$standard_concept[tables$table_name == name]
-}
-sourceConcept <- function(name) {
-  tables$source_concept[tables$table_name == name]
-}
-typeConcept <- function(name) {
-  tables$type_concept[tables$table_name == name]
-}
-tableId <- function(name) {
-  tables$id[tables$table_name == name]
-}
 
 warnFacetColour <- function(result, cols) {
   colsToWarn <- result |>
     dplyr::select(
       "cdm_name", "group_name", "group_level", "strata_name", "strata_level",
-      "variable_name", "variable_level", "additional_name", "additional_level"
+      "variable_name", "variable_level"
     ) |>
     dplyr::distinct() |>
-    visOmopResults::splitAll() |>
+    omopgenerics::splitAll() |>
     dplyr::select(!dplyr::any_of(unique(unlist(cols)))) |>
     as.list() |>
     purrr::map(unique)
@@ -36,12 +18,14 @@ warnFacetColour <- function(result, cols) {
   }
   invisible(NULL)
 }
+
 collapseStr <- function(x, sep) {
   x <- x[x != ""]
   if (length(x) == 1) return(x)
   len <- length(x)
   paste0(paste0(x[-len], collapse = ", "), " ", sep, " ", x[len])
 }
+
 asCharacterFacet <- function(facet) {
   if (rlang::is_formula(facet)) {
     facet <- as.character(facet)
@@ -52,4 +36,26 @@ asCharacterFacet <- function(facet) {
     facet <- facet[facet != "."]
   }
   return(facet)
+}
+
+
+createSettings <- function(result_type, result_id = 1L, study_period = NULL) {
+  # Create the initial settings tibble
+  settings <- dplyr::tibble(
+    "result_id" = result_id,
+    "result_type" = result_type,
+    "package_name" = "OmopSketch",
+    "package_version" = as.character(utils::packageVersion("OmopSketch"))
+  )
+
+  # Conditionally add study period columns
+  if (!is.null(study_period)) {
+    settings <- settings |>
+      dplyr::mutate(
+        "study_period_start" = as.character(study_period[1]),
+        "study_period_end" = as.character(study_period[2])
+      )
+  }
+  # Return the settings tibble
+  return(settings)
 }

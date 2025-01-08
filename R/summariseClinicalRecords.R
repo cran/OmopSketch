@@ -22,6 +22,10 @@
 #' @param ageGroup A list of age groups to stratify results by.
 #' @param sex Boolean variable. Whether to stratify by sex (TRUE) or not
 #' (FALSE).
+#' @param sample An integer to sample the tables to only that number of records.
+#' If NULL no sample is done.
+#' @param dateRange A list containing the minimum and the maximum dates
+#' defining the time range within which the analysis is performed.
 #' @return A summarised_result object.
 #' @export
 #' @examples
@@ -48,293 +52,400 @@ summariseClinicalRecords <- function(cdm,
                                      recordsPerPerson = c("mean", "sd", "median", "q25", "q75", "min", "max"),
                                      inObservation = TRUE,
                                      standardConcept = TRUE,
-                                     sourceVocabulary = FALSE,
+                                     sourceVocabulary = TRUE,
                                      domainId = TRUE,
                                      typeConcept = TRUE,
                                      sex = FALSE,
-                                     ageGroup = NULL) {
+                                     ageGroup = NULL,
+                                     sample = NULL,
+                                     dateRange = NULL) {
   # Initial checks ----
-  omopgenerics::validateCdmArgument(cdm)
-  omopTableName |>
-    omopgenerics::assertChoice(choices = omopgenerics::omopTables())
-
+  cdm <- omopgenerics::validateCdmArgument(cdm)
+  opts <- omopgenerics::omopTables()
+  opts <- opts[opts %in% names(cdm)]
+  omopgenerics::assertChoice(omopTableName, choices = opts)
+  dateRange <- validateStudyPeriod(cdm, dateRange)
   estimates <- PatientProfiles::availableEstimates(
     variableType = "numeric", fullQuantiles = TRUE) |>
     dplyr::pull("estimate_name")
   omopgenerics::assertChoice(recordsPerPerson, choices = estimates, null = TRUE)
-
   recordsPerPerson <- unique(recordsPerPerson)
-
+  if (is.null(recordsPerPerson)) recordsPerPerson <- character()
   omopgenerics::assertLogical(inObservation, length = 1)
   omopgenerics::assertLogical(standardConcept, length = 1)
   omopgenerics::assertLogical(sourceVocabulary, length = 1)
   omopgenerics::assertLogical(domainId, length = 1)
   omopgenerics::assertLogical(typeConcept, length = 1)
   omopgenerics::assertLogical(sex, length = 1)
-  ageGroup <- omopgenerics::validateAgeGroupArgument(ageGroup, ageGroupName = "")[[1]]
+  ageGroup <- omopgenerics::validateAgeGroupArgument(ageGroup, multipleAgeGroup = FALSE)
+  omopgenerics::assertNumeric(sample, integerish = TRUE, min = 1, null = TRUE, length = 1)
 
-  result <- purrr::map(omopTableName,
-                       function(x) {
-                         if(omopgenerics::isTableEmpty(cdm[[x]])) {
-                           cli::cli_warn(paste0(x, " omop table is empty. Returning an empty summarised omop table."))
-                           return(omopgenerics::emptySummarisedResult())
-                         }
-                         summariseClinicalRecord(x,
-                                                 cdm = cdm,
-                                                 recordsPerPerson = recordsPerPerson,
-                                                 inObservation = inObservation,
-                                                 standardConcept = standardConcept,
-                                                 sourceVocabulary = sourceVocabulary,
-                                                 domainId = domainId,
-                                                 typeConcept = typeConcept,
-                                                 sex = sex,
-                                                 ageGroup = ageGroup)
-                       }
-  ) |>
-    dplyr::bind_rows()
+  # warnings for observation_period
+  warnStandardConcept <- standardConcept & !missing(standardConcept)
+  warnSourceVocabulary <- sourceVocabulary & !missing(sourceVocabulary)
+  warnDomainId <- domainId & !missing(domainId)
 
-  return(result)
-}
+  # prefix
+  prefix <- omopgenerics::tmpPrefix()
 
-#' @noRd
-summariseClinicalRecord <- function(omopTableName, cdm, recordsPerPerson,
-                                    inObservation, standardConcept,
-                                    sourceVocabulary, domainId, typeConcept,
-                                    sex, ageGroup, call = parent.frame(3)) {
+  # get strata
+  strata <- c(
+    list(character()),
+    omopgenerics::combineStrata(strataCols(sex = sex, ageGroup = ageGroup))
+  )
 
-  tablePrefix <-  omopgenerics::tmpPrefix()
+  # create denominator for record count
+  den <- denominator(
+    cdm = cdm,
+    sex = sex,
+    ageGroup = ageGroup,
+    name = omopgenerics::uniqueTableName(prefix)
+  )
 
-  # Initial checks
-  omopgenerics::assertClass(cdm[[omopTableName]], "omop_table", call = call)
+  set <- createSettings(
+    result_type = "summarise_clinical_records", study_period = dateRange
+  )
 
-  date <- startDate(omopgenerics::tableName(cdm[[omopTableName]]))
+  result <- purrr::map(omopTableName, \(table) {
+    # check that table is not empty
+    omopTable <- dplyr::ungroup(cdm[[table]])
+    if (omopgenerics::isTableEmpty(omopTable)) {
+      cli::cli_warn("{table} is empty.")
+      return(omopgenerics::emptySummarisedResult())
+    }
+    prefix <- omopgenerics::tmpPrefix()
 
-  omopTable <- cdm[[omopTableName]] |>
-    dplyr::ungroup()
-
-  omopTable <- filterPersonId(omopTable) |>
-    addStrataToOmopTable(date, ageGroup, sex)
-
-    if ("observation_period" == omopTableName) {
-    if(standardConcept){
-      if(!missing(standardConcept)){
-        cli::cli_inform("standardConcept turned to FALSE for observation_period OMOP table", call = call)
+    # warn if observation_period
+    if ("observation_period" == table) {
+      if (warnStandardConcept) {
+        "standardConcept turned to FALSE for observation_period OMOP table" |>
+          rlang::set_names("i") |>
+          cli::cli_inform()
       }
       standardConcept <- FALSE
-    }
-    if(sourceVocabulary){
-      if(!missing(sourceVocabulary)){
-        cli::cli_inform("sourceVocabulary turned to FALSE for observation_period OMOP table", call = call)
+      if (warnSourceVocabulary) {
+        "sourceVocabulary turned to FALSE for observation_period OMOP table" |>
+          rlang::set_names("i") |>
+          cli::cli_inform()
       }
       sourceVocabulary <- FALSE
-    }
-    if(domainId){
-      if(!missing(domainId)){
-        cli::cli_inform("domainId turned to FALSE for observation_period OMOP table", call = call)
+      if (warnDomainId) {
+        "domainId turned to FALSE for observation_period OMOP table" |>
+          rlang::set_names("i") |>
+          cli::cli_inform()
       }
       domainId <- FALSE
     }
-  }
 
-  strata <- getStrataList(sex, ageGroup)
+    # restrict study period
+    omopTable <- restrictStudyPeriod(omopTable, dateRange)
+    if (is.null(omopTable)) return(omopgenerics::emptySummarisedResult())
 
-  peopleStrata <- suppressWarnings(addStrataToPeopleInObservation(cdm, ageGroup, sex, tablePrefix))
-
-  people <- getNumberPeopleInCdm(cdm, strata, peopleStrata)
-  result <- omopgenerics::emptySummarisedResult()
-
-  # Counts summary ----
-  cli::cli_inform(c("i" = "Summarising table counts"))
-  result <- result |>
-    addCounts(strata, omopTable) |>
-    addSubjectsPercentage(omopTable, people, strata)
-
-  # Records per person summary ----
-  if(!is.null(recordsPerPerson)){
-    cli::cli_inform(c("i" = "Summarising records per person"))
-    result <- result |>
-      addRecordsPerPerson(omopTable, recordsPerPerson, cdm, peopleStrata, strata)
-  }
-
-  denominator <- result |>
-    dplyr::filter(.data$variable_name == "number records") |>
-    dplyr::collect("strata_name", "strata_level", "estimate_value")
-
-  # Summary concepts ----
-  if (inObservation | standardConcept | sourceVocabulary | domainId | typeConcept) {
-
-    variables <- columnsVariables(
-      inObservation, standardConcept, sourceVocabulary, domainId, typeConcept
-    )
-
-    cli::cli_inform(c("i" = "Summarising {variables} information"))
-
-    result <- result |>
-      dplyr::bind_rows(
-        omopTable |>
-          addVariables(variables, strata) |>
-          dplyr::group_by(dplyr::across(dplyr::all_of(variables)), .data$age_group, .data$sex) |>
-          dplyr::tally() |>
-          dplyr::collect() |>
-          dplyr::mutate("n" = as.integer(.data$n)) |>
-          summaryData(variables, cdm, denominator, result)
+    cli::cli_inform(c("i" = "Adding variables of interest to {.pkg {table}}."))
+    omopTable <- omopTable |>
+      # add variables of interest
+      addVariables(inObservation, standardConcept, sourceVocabulary, domainId, typeConcept) |>
+      # add demographics and year
+      addStratifications(
+        indexDate = "start_date",
+        sex = sex,
+        ageGroup = ageGroup,
+        interval = "overall",
+        name = omopgenerics::uniqueTableName(prefix)
       )
-  }
 
-  # Format output as a summarised result
-  result <- result |>
-    tidyr::fill("result_id", "cdm_name", "group_name", "group_level",
-                "additional_name", "additional_level", .direction = "downup") |>
-    dplyr::mutate(
-      "group_name" = "omop_table",
-      "group_level" = omopgenerics::tableName(omopTable)
+    cli::cli_inform(c("i" = "Summarising records per person in {.pkg {table}}."))
+    resultsRecordPerPerson <- summariseRecordsPerPerson(
+      x = omopTable, den = den, strata = strata, estimates = recordsPerPerson
     ) |>
-    omopgenerics::newSummarisedResult(settings = dplyr::tibble(
-      "result_id" = 1L,
-      "result_type" = "summarise_clinical_records",
-      "package_name" = "OmopSketch",
-      "package_version" = as.character(utils::packageVersion("OmopSketch"))
-    ))
+      dplyr::select(!dplyr::starts_with("group_"))
 
-  CDMConnector::dropTable(cdm, name = dplyr::starts_with(tablePrefix))
+    # Summary
+    if (inObservation | standardConcept | sourceVocabulary | domainId | typeConcept) {
+      denominator <- resultsRecordPerPerson |>
+        dplyr::filter(.data$variable_name == "Number records") |>
+        dplyr::select("strata_name", "strata_level", den = "estimate_value")
+      variables <- variablesToSummarise(
+        inObservation, standardConcept, sourceVocabulary, domainId, typeConcept
+      )
+      cli::cli_inform(c("i" = "Summarising {.pkg {table}}: {.var {variables}}."))
+      resultVariables <- purrr::map(strata, \(stratax) {
+        agregated <- omopTable |>
+          dplyr::group_by(dplyr::across(dplyr::all_of(c(stratax, variables)))) |>
+          dplyr::summarise(n = as.integer(dplyr::n()), .groups = "drop") |>
+          dplyr::collect() |>
+          omopgenerics::uniteStrata(cols = stratax)
+        purrr::map(variables, \(var) {
+          res <- agregated |>
+            dplyr::group_by(dplyr::across(dplyr::all_of(c(
+              "strata_name", "strata_level", var
+            )))) |>
+            dplyr::summarise(count = sum(.data$n), .groups = "drop")|>
+            dplyr::inner_join(
+              denominator, by = c("strata_name", "strata_level")
+            ) |>
+            dplyr::mutate(
+              percentage = sprintf("%.2f", 100 * as.numeric(.data$count) / as.numeric(.data$den)),
+              count = sprintf("%i", as.integer(.data$count))
+            ) |>
+            dplyr::select(!"den") |>
+            tidyr::pivot_longer(
+              cols = c("count", "percentage"),
+              names_to = "estimate_name",
+              values_to = "estimate_value"
+            ) |>
+            dplyr::mutate(estimate_type = dplyr::if_else(
+              .data$estimate_name == "count", "integer", "percentage"
+            ))
+          if (var == "in_observation") {
+            res <- res |>
+              dplyr::mutate(
+                variable_name = "In observation",
+                variable_level = dplyr::if_else(.data[[var]] == 1, "Yes", "No")
+              )
+          } else if (var == "doamin_id") {
+            res <- res |>
+              dplyr::mutate(
+                variable_name = "Domain",
+                variable_level = .data[[var]]
+              )
+          } else if (var == "standard_concept") {
+            res <- res |>
+              dplyr::mutate(
+                variable_name = "Standard concept",
+                variable_level = .data[[var]]
+              )
+          } else if (var == "source_vocabulary") {
+            res <- res |>
+              dplyr::mutate(
+                variable_name = "Source vocabulary",
+                variable_level = .data[[var]]
+              )
+          } else if (var == "type_concept") {
+            res <- res |>
+              dplyr::mutate(
+                variable_name = "Type concept id",
+                type_concept = as.integer(.data$type_concept)
+              ) |>
+              dplyr::left_join(conceptTypes, by = "type_concept") |>
+              dplyr::mutate(type_name = dplyr::coalesce(
+                .data$type_name, paste0("Unknown type concept: ", .data$type_concept)
+              )) |>
+              dplyr::rename(variable_level = "type_name")
+          }
+          res <- res |>
+            dplyr::select(!dplyr::all_of(var))
+          return(res)
+        }) |>
+          dplyr::bind_rows()
+      }) |>
+        dplyr::bind_rows() |>
+        omopgenerics::uniteAdditional() |>
+        dplyr::mutate(result_id = 1L, cdm_name = omopgenerics::cdmName(cdm))
+    } else {
+      resultVariables <- NULL
+    }
+
+    fullResult <- dplyr::bind_rows(resultsRecordPerPerson, resultVariables) |>
+      dplyr::mutate(omop_table = .env$table) |>
+      omopgenerics::uniteGroup(cols = "omop_table")
+
+    # drop temp tables
+    omopgenerics::dropSourceTable(cdm = cdm, name = dplyr::starts_with(prefix))
+
+    # order
+    fullResult |>
+      dplyr::select("strata_name", "strata_level") |>
+      dplyr::distinct() |>
+      dplyr::cross_join(dplyr::tibble(variable_name = unique(c(
+        "Number subjects", "Number records", "records_per_person",
+        unique(fullResult$variable_name)
+      )))) |>
+      dplyr::mutate(order_id = dplyr::row_number()) |>
+      dplyr::right_join(
+        fullResult,
+        by = c("strata_name", "strata_level", "variable_name"),
+        relationship = "many-to-many"
+      ) |>
+      dplyr::arrange(.data$order_id, .data$variable_level, .data$estimate_name) |>
+      dplyr::select(!"order_id")
+  }) |>
+    dplyr::bind_rows() |>
+    omopgenerics::newSummarisedResult(settings = set)
+
+  # drop temp tables
+  omopgenerics::dropSourceTable(cdm = cdm, name = dplyr::starts_with(prefix))
 
   return(result)
 }
 
-# Functions -----
-getStrataList <- function(sex, ageGroup){
+summariseRecordsPerPerson <- function(x, den, strata, estimates) {
+  # strata
+  strataCols <- unique(unlist(strata))
 
-  strata <- as.character()
+  cdm <- omopgenerics::cdmReference(x)
+  prefix <- omopgenerics::tmpPrefix()
+  nm <- omopgenerics::uniqueTableName(prefix = prefix)
 
-  if(!is.null(ageGroup)){
-    strata <- append(strata, "age_group")
+  res <- den |>
+    dplyr::left_join(
+      x |>
+        dplyr::group_by(dplyr::across(dplyr::all_of(c("person_id", strataCols)))) |>
+        dplyr::summarise(n = as.integer(dplyr::n()), .groups = "drop"),
+      by = c("person_id", strataCols)
+    ) |>
+    dplyr::mutate(n = dplyr::coalesce(.data$n, 0L)) |>
+    dplyr::compute(name = nm, temporary = FALSE)
+
+  result <- purrr::map(strata, \(stratax) {
+    if (length(strata) > 1) {
+      nm <- omopgenerics::uniqueTableName(prefix = prefix)
+      resultx <- res |>
+        dplyr::group_by(dplyr::across(dplyr::all_of(c("person_id", stratax)))) |>
+        dplyr::summarise(n = sum(.data$n, na.rm = TRUE), .groups = "drop") |>
+        dplyr::compute(name = nm, temporary = FALSE)
+    } else {
+      resultx <- res
+    }
+    resultx |>
+      dplyr::mutate(number_subjects = dplyr::if_else(.data$n == 0, 0L, 1L)) |>
+      dplyr::select(!"person_id") |>
+      PatientProfiles::summariseResult(
+        group = list(),
+        includeOverallGroup = FALSE,
+        strata = list(stratax),
+        includeOverallStrata = FALSE,
+        counts =  FALSE,
+        variables = list("number_subjects", "n"),
+        estimates = list(c("count", "percentage"), c(estimates, "sum"))
+      ) |>
+      suppressMessages() |>
+      dplyr::mutate(variable_name = dplyr::if_else(.data$variable_name == "number subjects", "Number subjects", .data$variable_name))
+}) |>
+    dplyr::bind_rows() |>
+    dplyr::mutate(
+      variable_name = dplyr::if_else(
+        .data$variable_name == "n",
+        dplyr::if_else(.data$estimate_name == "sum", "Number records", "records_per_person"),
+        .data$variable_name
+      ),
+      estimate_name = dplyr::if_else(
+        .data$variable_name == "Number records", "count", .data$estimate_name
+      ),
+      estimate_value = reduceDemicals(.data$estimate_value, 4)
+    )
+
+  omopgenerics::dropTable(cdm = cdm, name = dplyr::starts_with(prefix))
+
+  return(result)
+}
+variablesToSummarise <- function(inObservation, standardConcept, sourceVocabulary, domainId, typeConcept) {
+  c("in_observation"[inObservation], "standard_concept"[standardConcept],
+    "source_vocabulary"[sourceVocabulary], "domain_id"[domainId],
+    "type_concept"[typeConcept])
+}
+denominator <- function(cdm, sex, ageGroup, name) {
+  ageGroup <- ageGroup$age_group
+  # denominator
+  demographics <- CohortConstructor::demographicsCohort(
+    cdm = cdm, name = name, ageRange = ageGroup
+  ) |>
+    suppressMessages()
+  set <- omopgenerics::settings(demographics)
+  if (sex) {
+    demographics <- PatientProfiles::addSexQuery(demographics)
   }
-
-  if(sex){
-    strata <- append(strata, "sex")
+  if (is.null(ageGroup)) {
+    set <- set |>
+      dplyr::select("cohort_definition_id")
+  } else {
+    set <- set |>
+      dplyr::left_join(
+        dplyr::tibble(
+          age_group = names(ageGroup),
+          age_range = purrr::map_chr(ageGroup, \(x) paste0(x[1], "_", x[2]))
+        ),
+        by = "age_range"
+      ) |>
+      dplyr::mutate(age_group = dplyr::coalesce(.data$age_group, .data$age_range)) |>
+      dplyr::select("cohort_definition_id", "age_group")
   }
+  nm <- omopgenerics::uniqueTableName()
+  cdm <- omopgenerics::insertTable(cdm = cdm, name = nm, table = set)
 
-  strata <- omopgenerics::combineStrata(levels = strata)
-  return(strata)
+  demographics <- demographics |>
+    dplyr::select(dplyr::any_of(c(
+      "cohort_definition_id", "person_id" = "subject_id", "sex"
+    ))) |>
+    dplyr::inner_join(cdm[[nm]], by = "cohort_definition_id") |>
+    dplyr::select(!"cohort_definition_id") |>
+    dplyr::distinct() |>
+    dplyr::compute(name = name, temporary = FALSE)
+
+  omopgenerics::dropSourceTable(cdm = cdm, name = nm)
+
+  return(demographics)
 }
-
-getNumberPeopleInCdm <- function(cdm, strata, peopleStrata){
-
-  peopleStrata |>
-    dplyr::select(-c("observation_period_start_date","observation_period_end_date")) |>
-    dplyr::inner_join(cdm[["person"]] |> dplyr::select("person_id"), by = "person_id") |>
-    dplyr::collect() |> # https://github.com/darwin-eu-dev/PatientProfiles/issues/706
-    PatientProfiles::summariseResult(strata = strata,
-                                     includeOverallStrata = TRUE,
-                                     counts = TRUE,
-                                     estimates = c("")) |>
-    suppressMessages() |>
-    dplyr::filter(.data$variable_name != "number records")
-}
-
-addCounts <- function(result, strata, omopTable){
-
-  date <- startDate(omopgenerics::tableName(omopTable))
-
-  result |>
-    rbind(
-      omopTable |>
-        dplyr::select("person_id", dplyr::any_of(c("age_group","sex"))) |>
-        dplyr::collect() |> # https://github.com/darwin-eu-dev/PatientProfiles/issues/706
-        PatientProfiles::summariseResult(strata = strata,
-                                         includeOverallStrata = TRUE,
-                                         counts = TRUE,
-                                         estimates = c("max"))
-    )
-
-}
-
-addSubjectsPercentage <- function(result, omopTable, people, strata){
-
-  result |>
-    rbind(
-      result |>
-        dplyr::filter(.data$variable_name == "number subjects") |>
-        dplyr::rename("omop_table" = "estimate_value") |>
-        dplyr::inner_join(
-          people |> dplyr::rename("people" = "estimate_value"),
-          by = c("result_id","cdm_name","group_name","group_level","strata_name",
-                 "strata_level","variable_name","variable_level","estimate_name",
-                 "estimate_type","additional_name","additional_level")
-        ) |>
-        dplyr::mutate("estimate_value" = as.numeric(.data$omop_table)/as.numeric(.data$people)*100) |>
-        dplyr::select(-c("omop_table", "people")) |>
-        dplyr::mutate("estimate_name" = "percentage",
-                      "estimate_type" = "percentage")
-    )
-
-}
-
-addRecordsPerPerson <- function(result, omopTable, recordsPerPerson, cdm, peopleStrata, strata){
-
-  result |>
-    rbind(
-      peopleStrata |>
-        dplyr::select("person_id", dplyr::any_of(c("sex", "age_group"))) |>
-        dplyr::left_join(
-          omopTable |>
-            dplyr::group_by(.data$person_id, dplyr::across(dplyr::any_of(c("age_group","sex")))) |>
-            dplyr::summarise(
-              "records_per_person" = as.integer(dplyr::n()),
-              .groups = "drop"
-            ),
-          by = c("person_id", "age_group", "sex")
-        ) |>
-        dplyr::mutate("records_per_person" = dplyr::if_else(
-          is.na(.data$records_per_person),
-          0L,
-          .data$records_per_person
-        )) |>
-        dplyr::distinct() |>
-        dplyr::collect() |> # https://github.com/darwin-eu-dev/PatientProfiles/issues/706
-        PatientProfiles::summariseResult(
-          strata = strata,
-          includeOverallStrata = TRUE,
-          variables = "records_per_person",
-          estimates = recordsPerPerson,
-          counts = FALSE
-        )
-    )
-}
-
-addVariables <- function(x, variables, strata) {
+addVariables <- function(x, inObservation, standardConcept, sourceVocabulary, domainId, typeConcept) {
 
   name <- omopgenerics::tableName(x)
 
   newNames <- c(
-    "person_id",
-    "id" = tableId(name),
-    "start_date" = startDate(name),
-    "end_date"   = endDate(name),
-    "standard" = standardConcept(name),
-    "source" = sourceConcept(name),
-    "type" = typeConcept(name)
+    # here to support death table
+    person_id = "person_id",
+    id = omopgenerics::omopColumns(table = name, field = "unique_id"),
+    start_date = omopgenerics::omopColumns(table = name, field = "start_date"),
+    end_date = omopgenerics::omopColumns(table = name, field = "end_date"),
+    standard = omopgenerics::omopColumns(table = name, field = "standard_concept"),
+    source = omopgenerics::omopColumns(table = name, field = "source_concept"),
+    type_concept = omopgenerics::omopColumns(table = name, field = "type_concept")
   )
 
   newNames <- newNames[!is.na(newNames)]
   cdm <- omopgenerics::cdmReference(x)
 
   x <- x |>
-    dplyr::select(dplyr::all_of(newNames), "age_group", "sex")
+    dplyr::select(dplyr::all_of(newNames)) |>
+    dplyr::mutate(end_date = dplyr::coalesce(.data$end_date, .data$start_date))
 
-  # Domain and standard ----
-  if (any(c("domain_id", "standard") %in% variables)) {
+  # In observation
+  if (inObservation) {
+    x <- x |>
+      dplyr::left_join(
+        x |>
+          dplyr::inner_join(
+            cdm[["observation_period"]] |>
+              dplyr::select(
+                "person_id",
+                obs_start = "observation_period_start_date",
+                obs_end = "observation_period_end_date"
+              ),
+            by = "person_id"
+          ) |>
+          dplyr::filter(
+            .data$start_date >= .data$obs_start &
+              .data$end_date <= .data$obs_end
+          ) |>
+          dplyr::mutate(in_observation = 1L) |>
+          dplyr::select(c("in_observation", "id", "person_id")),
+        by = c("person_id", "id")
+      ) |>
+      dplyr::mutate(in_observation = dplyr::coalesce(.data$in_observation, 0L))
+  }
+
+  # Domain and standard
+  if (domainId | standardConcept) {
     x <- x |>
       dplyr::left_join(
         cdm$concept |>
           dplyr::select(
-            "standard" = "concept_id", "domain_id", "standard_concept"
+            standard = "concept_id", "domain_id", "standard_concept"
           ),
         by = "standard"
       )
-    if ("standard" %in% variables) {
+    if (standardConcept) {
       x <- x |>
-        dplyr::mutate("standard" = dplyr::case_when(
+        dplyr::mutate(standard = dplyr::case_when(
           .data$standard == 0 ~ "No matching concept",
           .data$standard_concept == "S" ~ "Standard",
           .data$standard_concept == "C" ~ "Classification",
@@ -342,193 +453,31 @@ addVariables <- function(x, variables, strata) {
         ))
     }
   }
-  # Source ----
-  if ("source" %in% variables) {
+
+  # Source
+  if (sourceVocabulary) {
     x <- x |>
       dplyr::left_join(
         cdm$concept |>
           dplyr::select(
-            "source" = "concept_id", "vocabulary" = "vocabulary_id"
+            source = "concept_id", source_vocabulary = "vocabulary_id"
           ),
         by = "source"
       ) |>
-      dplyr::mutate(
-        vocabulary = dplyr::if_else(is.na(.data$vocabulary), "No matching concept", .data$vocabulary)
-      ) |>
-      dplyr::rename("source_concept" = "source", "source" = "vocabulary")
-  }
-  # In observation ----
-  if ("in_observation" %in% variables) {
-    x <- x |>
-      dplyr::left_join(
-        x |>
-          dplyr::left_join(
-            cdm[["observation_period"]] |>
-              dplyr::select("person_id",
-                            "obs_start" = "observation_period_start_date",
-                            "obs_end" = "observation_period_end_date"),
-            by = "person_id"
-          ) |>
-          dplyr::filter(
-            .data$start_date >= .data$obs_start &
-              .data$end_date <= .data$obs_end
-          ) |>
-          dplyr::mutate("in_observation" = 1L) |>
-          dplyr::select("in_observation", "id", "person_id"),
-        by = c("id", "person_id")
-      ) |>
-      dplyr::distinct()
-  }
-
-  x <- x |>
-    dplyr::select(dplyr::all_of(variables), "age_group", "sex") |>
-    dplyr::mutate(dplyr::across(dplyr::everything(), ~as.character(.)))
-
-  # Create overall groups - This chunk will need efficiency improvement
-  if(length(strata) == 3){
-    x <- x |>
-      dplyr::union_all(
-        x |>
-          dplyr::mutate(age_group = "overall")
-      ) |>
-      dplyr::union_all(
-        x |>
-          dplyr::mutate(sex = "overall")
-      ) |>
-      dplyr::union_all(
-        x |>
-          dplyr::mutate(sex = "overall") |>
-          dplyr::mutate(age_group = "overall")
-      )
-
-  }
-  return(x)
-}
-
-columnsVariables <- function(inObservation, standardConcept, sourceVocabulary, domainId, typeConcept) {
-  c("in_observation", "standard", "domain_id", "source", "type" )[c(
-    inObservation, standardConcept, domainId, sourceVocabulary, typeConcept
-  )]
-}
-
-summaryData <- function(x, variables, cdm, denominator, result) {
-  results <- list()
-
-  # in observation ----
-  if ("in_observation" %in% variables) {
-    results[["obs"]] <- x |>
-      dplyr::mutate("in_observation" = dplyr::if_else(
-        !is.na(.data$in_observation), "Yes", "No"
-      )) |>
-      formatResults("In observation", "in_observation", denominator, result)
-  }
-
-  # standard -----
-  if ("standard" %in% variables) {
-    results[["standard"]] <- x |>
-      formatResults("Standard concept", "standard", denominator, result)
-  }
-
-  # source ----
-  if ("source" %in% variables) {
-    results[["source"]] <- x |> formatResults("Source vocabulary", "source", denominator, result)
-  }
-
-  # domain ----
-  if ("domain_id" %in% variables) {
-    results[["domain"]] <- x |> formatResults("Domain", "domain_id", denominator, result)
-  }
-
-  # type ----
-  if ("type" %in% variables) {
-    xx <- x |>
-      formatResults("Type concept id", "type", denominator, result) |>
-      dplyr::left_join(
-        conceptTypes |>
-          dplyr::select(
-            "variable_level" = "type_concept_id",
-            "new_variable_level" = "type_name"
-          ),
-        by = "variable_level"
-      ) |>
-      dplyr::mutate("variable_level" = dplyr::if_else(
-        is.na(.data$new_variable_level),
-        .data$variable_level,
-        paste0(.data$new_variable_level, " (", .data$variable_level, ")")
+      dplyr::mutate(source_vocabulary = dplyr::coalesce(
+        .data$source_vocabulary, "No matching concept"
       ))
-    if (xx |>
-        dplyr::filter(is.na(.data$new_variable_level)) |>
-        dplyr::tally() |>
-        dplyr::pull() > 0) {
-      namesTypes <- cdm[["concept"]] |>
-        dplyr::filter(.data$domain_id == "Type Concept") |>
-        dplyr::select(
-          "variable_level" = "concept_id", "new_variable_level" = "concept_name"
-        ) |>
-        dplyr::collect() |>
-        dplyr::mutate(dplyr::across(dplyr::everything(), as.character))
-      xx <- xx |>
-        dplyr::select(-"new_variable_level") |>
-        dplyr::left_join(
-          namesTypes,
-          by = "variable_level"
-        ) |>
-        dplyr::mutate("variable_level" = dplyr::if_else(
-          is.na(.data$new_variable_level),
-          .data$variable_level,
-          paste0(.data$new_variable_level, " (", .data$variable_level, ")")
-        ))
-    }
-    results[["type"]] <- xx |> dplyr::select(-"new_variable_level")
   }
 
-  results <- results |>
-    dplyr::bind_rows()
-
-  return(results)
-}
-
-formatResults <- function(x, variableName, variableLevel, denominator, result) {
-
-  denominator <- denominator |>
-    dplyr::select("strata_name", "strata_level", "denominator" = "estimate_value") |>
-    visOmopResults::splitStrata()
-
-  if(!"age_group" %in% colnames(denominator)){
-    denominator <- denominator |>
-      dplyr::mutate("age_group" = "overall")
-  }
-
-  if(!"sex" %in% colnames(denominator)){
-    denominator <- denominator |>
-      dplyr::mutate("sex" = "overall")
-  }
+  variables <- c("id", "person_id", "start_date", variablesToSummarise(
+    inObservation, standardConcept, sourceVocabulary, domainId, typeConcept
+  ))
 
   x |>
-    dplyr::group_by(dplyr::across(dplyr::all_of(c(variableLevel,"age_group","sex")))) |>
-    dplyr::summarise("count" = sum(.data$n), .groups = "drop") |>
-    dplyr::inner_join(
-      denominator,
-      by = c("age_group","sex")
-    ) |>
-    dplyr::mutate("percentage" = 100 * .data$count / as.numeric(.data$denominator)) |>
-    dplyr::mutate(dplyr::across(dplyr::everything(), as.character)) |>
-    tidyr::pivot_longer(
-      cols = c("count", "percentage"),
-      names_to = "estimate_name",
-      values_to = "estimate_value"
-    ) |>
-    dplyr::mutate(
-      "variable_name" = .env$variableName,
-      "variable_level" = as.character(.data[[variableLevel]]),
-      "estimate_type" = dplyr::if_else(
-        .data$estimate_name == "count", "integer", "percentage"
-      )
-    ) |>
-    visOmopResults::uniteStrata(cols = c("age_group","sex")) |>
-    dplyr::select(
-      "strata_name", "strata_level", "variable_name", "variable_level",
-      "estimate_name", "estimate_type", "estimate_value"
-    ) |>
-    dplyr::ungroup()
+    dplyr::select(dplyr::all_of(variables))
+}
+reduceDemicals <- function(x, n) {
+  id <- grepl(pattern = ".", x = x, fixed = TRUE) & !is.na(suppressWarnings(as.numeric(x)))
+  x[id] <- sprintf(paste0("%.", n, "f"), as.numeric(x[id]))
+  return(x)
 }

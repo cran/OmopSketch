@@ -1,10 +1,30 @@
 #' @noRd
-checkUnit <- function(unit, call = parent.frame()){
-  omopgenerics::assertCharacter(unit, length = 1, na = FALSE, null = FALSE, call = call)
+checkInterval <- function(interval, call = parent.frame()){
+  omopgenerics::assertCharacter(interval, length = 1, na = FALSE, null = FALSE, call = call)
 
-  if(!unit %in% c("year","month")){
-    cli::cli_abort("Unit argument {unit} is not valid. Valid options are either `year` or `month`.", call = call)
+  if(!interval %in% c("year","month")){
+    cli::cli_abort("Interval argument {interval} is not valid. Valid options are either `year` or `month`.", call = call)
   }
+}
+
+validateIntervals <- function(interval, call = parent.frame()){
+
+  omopgenerics::assertCharacter(interval, length = 1, na = FALSE, null = FALSE, call = call)
+
+  if(!interval %in% c("overall","years","months","quarters")){
+    cli::cli_abort("Interval argument {interval} is not valid. Valid options are either `overall`, `years`, `quarters` or `months`.", call = call)
+  }
+
+  unitInterval <- dplyr::case_when(
+    interval == "overall" ~ NA,
+    interval == "quarters" ~ 3,
+    interval == "months" ~ 1,
+    interval == "years" ~ 1
+  )
+
+  if(interval == "quarters"){quarters <- "month"}else{interval <- gsub("s$","",interval)}
+
+  return(list("interval" = interval, "unitInterval" = unitInterval))
 }
 
 #' @noRd
@@ -100,7 +120,7 @@ checkCountBy <- function(countBy, call = parent.frame()){
 #' @noRd
 validateStudyPeriod <- function(cdm, studyPeriod, call = parent.frame()) {
   if(is.null(studyPeriod)) {
-    studyPeriod <- c(NA,NA)
+    return(NULL)
   }
   # First date checks
   if(!is.na(studyPeriod[1]) & !is.na(studyPeriod[2]) & studyPeriod[1] > studyPeriod[2]) {
@@ -146,7 +166,7 @@ validateStudyPeriod <- function(cdm, studyPeriod, call = parent.frame()) {
                               dplyr::pull("maxobs")))
     }
     if(studyPeriod[2] > clock::date_today(zone = "GMT")) {
-      cli::cli_alert(paste0("The observation period in the cdm ends after current date."))
+      cli::cli_alert(paste0("The given date range ends after current date."))
     }
   }
 

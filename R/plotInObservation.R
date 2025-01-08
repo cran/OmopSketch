@@ -10,7 +10,7 @@
 #' @export
 #' @examples
 #' \donttest{
-#' library(dplyr, warn.conflicts = FALSE)
+#' library(dplyr)
 #'
 #' cdm <- mockOmopSketch()
 #'
@@ -30,13 +30,16 @@
 plotInObservation <- function(result,
                               facet = NULL,
                               colour = NULL) {
+
+  rlang::check_installed("ggplot2")
+
   # initial checks
   omopgenerics::validateResultArgument(result)
   validateFacet(facet, result) # To remove when there's a version in omopgenerics
 
   # subset to results of interest
   result <- result |>
-    visOmopResults::filterSettings(
+    omopgenerics::filterSettings(
       .data$result_type == "summarise_in_observation")
   if (nrow(result) == 0) {
     cli::cli_abort(c("!" = "No records found with result_type == summarise_in_observation"))
@@ -52,27 +55,49 @@ plotInObservation <- function(result,
   }
 
   # warn
-  warnFacetColour(result, list(facet = asCharacterFacet(facet), colour = colour, "variable_level"))
+  warnFacetColour(result, list(facet = asCharacterFacet(facet), colour = colour, "additional_level"))
 
   # plot
-  result |>
-    dplyr::mutate(variable_level = as.Date(stringr::str_extract(
-      .data$variable_level, "^[^ to]+"))) |>
-    dplyr::filter(.data$estimate_name == "count") |>
-    visOmopResults::scatterPlot(
-      x = "variable_level",
-      y = "count",
-      line = TRUE,
-      point = TRUE,
-      ribbon = FALSE,
-      ymin = NULL,
-      ymax = NULL,
-      facet = facet,
-      colour = colour,
-      group = c("cdm_name", "omop_table", visOmopResults::strataColumns(result))
-    ) +
-    ggplot2::labs(
-      y = variable,
-      x = "Date"
-    )
+  if(length(unique(result$additional_level)) > 1 ){
+   p <- result |>
+      dplyr::filter(.data$estimate_name == "count") |>
+      visOmopResults::scatterPlot(
+        x = "time_interval",
+        y = "count",
+        line = TRUE,
+        point = TRUE,
+        ribbon = FALSE,
+        ymin = NULL,
+        ymax = NULL,
+        facet = facet,
+        colour = colour,
+        group = c("cdm_name", "omop_table", omopgenerics::strataColumns(result))
+      ) +
+      ggplot2::labs(
+        y = variable,
+        x = "Date"
+      )
+   p$data <- p$data |>
+     dplyr::arrange(.data$time_interval) |>
+     dplyr::mutate(
+       show_label = seq_along(.data$time_interval) %% ceiling(nrow(p$data) / 20) == 0
+     )
+
+   p <- p +
+     ggplot2::scale_x_discrete(
+       breaks = p$data$time_interval[p$data$show_label]
+     ) +
+     ggplot2::theme(
+       axis.text.x = ggplot2::element_text(angle = 90, hjust = 1, size = 8),
+       plot.margin = ggplot2::margin(t = 5, r = 5, b = 30, l = 5)
+     )
+   p
+  }else{
+    result |>
+      dplyr::filter(.data$estimate_name == "count") |>
+      visOmopResults::barPlot(x = "variable_name",
+                              y = "count",
+                              facet  = facet,
+                              colour = colour)
+  }
 }
