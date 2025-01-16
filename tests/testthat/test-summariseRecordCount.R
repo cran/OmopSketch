@@ -293,7 +293,7 @@ test_that("dateRnge argument works", {
 
   PatientProfiles::mockDisconnect(cdm = cdm)
 
-  db <- DBI::dbConnect(duckdb::duckdb(), dbdir = CDMConnector::eunomia_dir())
+  db <- DBI::dbConnect(duckdb::duckdb(), dbdir = CDMConnector::eunomiaDir())
   cdm <- CDMConnector::cdmFromCon(con = db, cdmSchema = "main",writeSchema = "main")
 
 
@@ -317,6 +317,10 @@ test_that("sample argument works", {
     dplyr::pull(n)
   expect_no_error(z<-summariseRecordCount(cdm,"drug_exposure",sample = n))
   expect_equal(y,z)
+  expect_equal(summariseRecordCount(cdm,"drug_exposure", sample = 1) |>
+                 dplyr::filter(.data$variable_name == "Number records") |>
+                 dplyr::pull(.data$estimate_value) |>
+                 as.integer(), 1L)
   PatientProfiles::mockDisconnect(cdm = cdm)
 })
 

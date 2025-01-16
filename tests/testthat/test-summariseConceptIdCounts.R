@@ -6,6 +6,7 @@ test_that("summariseConceptIdCount works", {
   expect_true(inherits(summariseConceptIdCounts(cdm, "drug_exposure"), "summarised_result"))
   expect_warning(summariseConceptIdCounts(cdm, "observation_period"))
   expect_no_error(x <- summariseConceptIdCounts(cdm, "visit_occurrence"))
+  checkResultType(x, "summarise_concept_id_counts")
   expect_no_error(summariseConceptIdCounts(cdm, "condition_occurrence", countBy = c("record", "person")))
   expect_no_error(summariseConceptIdCounts(cdm, "drug_exposure"))
   expect_no_error(summariseConceptIdCounts(cdm, "procedure_occurrence", countBy = "person"))
@@ -96,6 +97,11 @@ test_that("sample argument works", {
     dplyr::pull(n)
   expect_no_error(z<-summariseConceptIdCounts(cdm,"drug_exposure",sample = n))
   expect_equal(y |> sortTibble(), z |> sortTibble())
+  expect_equal(summariseConceptIdCounts(cdm,"drug_exposure", sample = 1) |>
+                 dplyr::filter(.data$estimate_name == "Number records") |>
+                 dplyr::pull(.data$estimate_value) |>
+                 as.integer(), 1L)
+
   PatientProfiles::mockDisconnect(cdm = cdm)
 })
 
