@@ -52,14 +52,6 @@ plotObservationPeriod(summarisedResult,
 
 
 ## ----warning=FALSE------------------------------------------------------------
-summarisedResult <- summariseObservationPeriod(cdm$observation_period) 
-
-plotObservationPeriod(summarisedResult,
-                      variableName = "Duration in days",
-                      plotType = "densityplot", 
-                      facet = "observation_period_ordinal")
-
-## ----warning=FALSE------------------------------------------------------------
 summarisedResult <- summariseObservationPeriod(cdm$observation_period,
                            sex = TRUE)  
 plotObservationPeriod(summarisedResult,
@@ -117,22 +109,14 @@ plotInObservation(summarisedResult)
 ## ----warning=FALSE------------------------------------------------------------
 summarisedResult <- summariseInObservation(cdm$observation_period, 
                        interval = "years",
-                       output = c("records", "person-days")) 
-plotInObservation(summarisedResult |> 
-  filter(variable_name == "Number person-days"))
-  
-
-## ----warning=FALSE------------------------------------------------------------
-
-summarisedResult <- summariseInObservation(cdm$observation_period,
-                       interval = "years",
+                       output = c("records", "person-days"),
                        sex = TRUE,
                        ageGroup = list("<35" = c(0, 34), ">=35" = c(35, Inf))) 
-plotInObservation(summarisedResult,
-                  colour = "sex", 
-                  facet = "age_group")
-
-
+plotInObservation(summarisedResult |> 
+  filter(variable_name == "Number person-days"),
+  colour = "sex", 
+  facet = "age_group")
+  
 
 ## ----warning=FALSE------------------------------------------------------------
   PatientProfiles::mockDisconnect(cdm = cdm)
