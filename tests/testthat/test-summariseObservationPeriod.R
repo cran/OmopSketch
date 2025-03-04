@@ -160,6 +160,7 @@ test_that("check summariseObservationPeriod works", {
 
   # table works
   expect_no_error(tableObservationPeriod(resAll))
+  expect_no_error(tableObservationPeriod(resAll, type = "datatable"))
   expect_no_error(tableObservationPeriod(resOne))
   expect_no_error(tableObservationPeriod(resEmpty))
 
@@ -469,7 +470,7 @@ test_that("dateRnge argument works", {
   skip_on_cran()
   # Load mock database ----
   cdm <- cdmEunomia()
-  expect_warning( summariseObservationPeriod(cdm$observation_period, dateRange =  as.Date(c("2012-01-01", "2018-01-01"))))
+
 
   expect_no_error(summariseObservationPeriod(cdm$observation_period, dateRange =  as.Date(c("1940-01-01", "2018-01-01"))))
   expect_message(x<-summariseObservationPeriod(cdm$observation_period, dateRange =  as.Date(c("1940-01-01", "2024-01-01")), estimates = "min" ))

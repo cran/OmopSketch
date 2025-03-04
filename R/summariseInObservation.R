@@ -3,7 +3,7 @@
 #'
 #' @param observationPeriod An observation_period omop table. It must be part of
 #' a cdm_reference object.
-#' @param interval Time interval to stratify by. It can either be "years", "quarters", "months" or "overall".
+#' @inheritParams interval
 #' @param output Output format. It can be either the number of records
 #' ("records") that are in observation in the specific interval of time, the
 #' number of person-days ("person-days"), or both c("records","person-days").
@@ -92,7 +92,7 @@ summariseInObservation <- function(observationPeriod,
   # Create summarisedResult
   result <- createSummarisedResultObservationPeriod(result, observationPeriod, name, denominator,dateRange, original_interval)
 
-  CDMConnector::dropTable(cdm, name = dplyr::starts_with(tablePrefix))
+  CDMConnector::dropSourceTable(cdm, name = dplyr::starts_with(tablePrefix))
   return(result)
 }
 
@@ -235,7 +235,11 @@ countRecords <- function(observationPeriod, cdm, start_date_name, end_date_name,
   }
 
   x <- personDays |>
-    rbind(records) |>
+    dplyr::mutate(estimate_value = as.numeric(.data$estimate_value)) |>
+    rbind(
+      records |>
+        dplyr::mutate(estimate_value = as.numeric(.data$estimate_value))
+    ) |>
     omopgenerics::uniteAdditional(additional_column)|>
     dplyr::arrange(dplyr::across(dplyr::any_of("additional_level")))
 
@@ -249,7 +253,7 @@ createSummarisedResultObservationPeriod <- function(result, observationPeriod, n
                                           dplyr::mutate("interval" = .env$original_interval))
   }else{
     result <- result |>
-      dplyr::mutate("estimate_value" = as.character(.data$estimate_value)) |>
+      dplyr::mutate("estimate_value" = sprintf('%.0f', .data$estimate_value)) |>
       omopgenerics::uniteStrata(cols = c("sex", "age_group")) |>
       dplyr::mutate(
         "result_id" = as.integer(1),
@@ -288,7 +292,7 @@ addStrataToPeopleInObservation <- function(cdm, ageGroup, sex, tablePrefix, date
 
   if (!is.null(dateRange)) {
     demographics <- demographics |>
-      CohortConstructor::requireInDateRange(dateRange = dateRange)
+      CohortConstructor::trimToDateRange(dateRange = dateRange)
     warningEmptyStudyPeriod(demographics)
   }
   if (sex) {
