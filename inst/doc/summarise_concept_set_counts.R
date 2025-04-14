@@ -21,7 +21,7 @@ cdm <- CDMConnector::cdmFromCon(
   con = con, cdmSchema = "main", writeSchema = "main"
 )
 
-cdm 
+cdm
 
 ## ----warning=FALSE------------------------------------------------------------
 acetaminophen <- getCandidateCodes(
@@ -40,69 +40,83 @@ sinusitis <- getCandidateCodes(
 ) |>
   dplyr::pull("concept_id")
 
+## ----warning=FALSE------------------------------------------------------------
+summariseConceptSetCounts(cdm,
+  conceptSet = list(
+    "acetaminophen" = acetaminophen,
+    "sinusitis" = sinusitis
+  )
+) |>
+  select(group_level, variable_name, variable_level, estimate_name, estimate_value) |>
+  glimpse()
 
 ## ----warning=FALSE------------------------------------------------------------
 summariseConceptSetCounts(cdm,
-                       conceptSet = list("acetaminophen" = acetaminophen,                          
-                                        "sinusitis" = sinusitis)) |>   
-  select(group_level, variable_name, variable_level, estimate_name, estimate_value) |>   
-  glimpse() 
-
-## ----warning=FALSE------------------------------------------------------------
-summariseConceptSetCounts(cdm, 
-                       conceptSet = list("acetaminophen" = acetaminophen, 
-                                        "sinusitis" = sinusitis), 
-                       countBy = c("record","person")) |>
+  conceptSet = list(
+    "acetaminophen" = acetaminophen,
+    "sinusitis" = sinusitis
+  ),
+  countBy = c("record", "person")
+) |>
   select(group_level, variable_name, estimate_name) |>
   distinct() |>
   arrange(group_level, variable_name)
 
-
 ## ----warning=FALSE------------------------------------------------------------
-summariseConceptSetCounts(cdm, 
-                       conceptSet = list("acetaminophen" = acetaminophen,
-                                        "sinusitis" = sinusitis),
-                       countBy = "record") |>
+summariseConceptSetCounts(cdm,
+  conceptSet = list(
+    "acetaminophen" = acetaminophen,
+    "sinusitis" = sinusitis
+  ),
+  countBy = "record"
+) |>
   select(group_level, variable_name, estimate_name) |>
   distinct() |>
-  arrange(group_level, variable_name) 
+  arrange(group_level, variable_name)
 
 ## ----warning=FALSE------------------------------------------------------------
 summariseConceptSetCounts(cdm,
-                       conceptSet = list("acetaminophen" = acetaminophen,
-                                        "sinusitis" = sinusitis),
-                       countBy = "person",
-                       interval = "years",
-                       sex  = TRUE,  
-                       ageGroup = list("<=50" = c(0,50), ">50" = c(51,Inf))) |>   
-  select(group_level, strata_level, variable_name, estimate_name) |>   glimpse() 
+  conceptSet = list(
+    "acetaminophen" = acetaminophen,
+    "sinusitis" = sinusitis
+  ),
+  countBy = "person",
+  interval = "years",
+  sex = TRUE,
+  ageGroup = list("<=50" = c(0, 50), ">50" = c(51, Inf))
+) |>
+  select(group_level, strata_level, variable_name, estimate_name) |>
+  glimpse()
 
 ## ----warning=FALSE------------------------------------------------------------
-summariseConceptSetCounts(cdm, 
-                       conceptSet = list("sinusitis" = sinusitis), 
-                       countBy = "person") |> 
+summariseConceptSetCounts(cdm,
+  conceptSet = list("sinusitis" = sinusitis),
+  countBy = "person"
+) |>
   plotConceptSetCounts()
 
-
 ## ----warning=FALSE------------------------------------------------------------
-summariseConceptSetCounts(cdm, 
-                       conceptSet = list("sinusitis" = sinusitis),
-                       countBy = c("person","record")) |>
+summariseConceptSetCounts(cdm,
+  conceptSet = list("sinusitis" = sinusitis),
+  countBy = c("person", "record")
+) |>
   filter(variable_name == "Number subjects") |>
   plotConceptSetCounts()
 
 ## ----warning=FALSE------------------------------------------------------------
-summariseConceptSetCounts(cdm, 
-                       conceptSet = list("sinusitis" = sinusitis),
-                       countBy = c("person"),
-                       sex = TRUE, 
-                       ageGroup = list("<=50" = c(0,50), ">50" = c(51, Inf))) |>
+summariseConceptSetCounts(cdm,
+  conceptSet = list("sinusitis" = sinusitis),
+  countBy = c("person"),
+  sex = TRUE,
+  ageGroup = list("<=50" = c(0, 50), ">50" = c(51, Inf))
+) |>
   visOmopResults::tidyColumns()
 
-summariseConceptSetCounts(cdm, 
-                       conceptSet = list("sinusitis" = sinusitis),
-                       countBy = c("person"),
-                       sex = TRUE, 
-                       ageGroup = list("<=50" = c(0,50), ">50" = c(51, Inf))) |>
+summariseConceptSetCounts(cdm,
+  conceptSet = list("sinusitis" = sinusitis),
+  countBy = c("person"),
+  sex = TRUE,
+  ageGroup = list("<=50" = c(0, 50), ">50" = c(51, Inf))
+) |>
   plotConceptSetCounts(facet = "sex", colour = "age_group")
 
