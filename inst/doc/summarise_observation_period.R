@@ -38,7 +38,7 @@ summarisedResult |>
   glimpse()
 
 ## ----warning=FALSE------------------------------------------------------------
-summarisedResult <- summarisedResult <- summariseObservationPeriod(cdm$observation_period,
+summarisedResult <- summariseObservationPeriod(cdm$observation_period,
   estimates = c("mean", "sd", "q05", "q95"),
   sex = TRUE
 )
@@ -111,6 +111,49 @@ summarisedResult <- summariseInObservation(cdm$observation_period,
 summarisedResult |>
   select(strata_level, variable_name, estimate_name, estimate_value, additional_name, additional_level)
 
+## -----------------------------------------------------------------------------
+summarisedResult <- summariseInObservation(cdm$observation_period, 
+                                           output = c("person"),
+                                           interval = "years",
+                                           sex = TRUE, 
+                                           ageGroup = list("<35" = c(0, 34), ">=35" = c(35, Inf)), 
+                                           )                                        
+
+
+summarisedResult |>
+  select(strata_level, variable_name, estimate_name, estimate_value, additional_name, additional_level)
+
+## -----------------------------------------------------------------------------
+summarisedResult <- summariseInObservation(cdm$observation_period, 
+                                           output = c("sex"),
+                                           interval = "years",
+                                           sex = TRUE, 
+                                           ageGroup = list("<35" = c(0, 34), ">=35" = c(35, Inf)), 
+                                           )                                        
+
+
+summarisedResult |>
+  select(strata_level, variable_name, estimate_name, estimate_value, additional_name, additional_level)
+
+## -----------------------------------------------------------------------------
+summarisedResult <- summariseInObservation(cdm$observation_period, 
+                                           output = c("age"),
+                                           interval = "years",
+                                           ageGroup = list("<35" = c(0, 34), ">=35" = c(35, Inf)), 
+                                           )                                        
+
+
+summarisedResult |>
+  select(strata_level, variable_name, estimate_name, estimate_value, additional_name, additional_level)
+
+## ----warning=FALSE------------------------------------------------------------
+summarisedResult <- summariseInObservation(cdm$observation_period, 
+                                           output = c("person", "person-days", "sex"),
+                                           sex = TRUE)
+
+summarisedResult |>
+  tableInObservation(type = "gt")
+
 ## ----warning=FALSE------------------------------------------------------------
 summarisedResult <- summariseInObservation(cdm$observation_period,
   interval = "years"
@@ -121,11 +164,11 @@ plotInObservation(summarisedResult)
 
 summarisedResult <- summariseInObservation(cdm$observation_period, 
                        interval = "years",
-                       output = c("record", "person-days"),
+                       output = c("record", "age"),
                        sex = TRUE,
                        ageGroup = list("<35" = c(0, 34), ">=35" = c(35, Inf))) 
 plotInObservation(summarisedResult |> 
-  filter(variable_name == "Number person-days"),
+  filter(variable_name == "Median age in observation"),
   colour = "sex", 
   facet = "age_group")
   

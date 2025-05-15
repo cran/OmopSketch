@@ -17,6 +17,15 @@
 #' @return A summarised_result object with results overall and, if specified, by
 #' strata.
 #' @export
+#' @examples
+#' \donttest{
+#' cdm <- mockOmopSketch(numberIndividuals = 100)
+#'
+#' result <- summariseMissingData (cdm = cdm,
+#' omopTableName = c("condition_occurrence", "visit_occurrence"))
+#'
+#' PatientProfiles::mockDisconnect(cdm)
+#' }
 summariseMissingData <- function(cdm,
                                  omopTableName,
                                  col = NULL,
@@ -141,6 +150,7 @@ summariseMissingDataFromTable <- function(table, cdm, col, dateRange, sample, se
   prefix <- omopgenerics::tmpPrefix()
 
   # check if table is empty
+
   if (omopgenerics::isTableEmpty(omopTable)) {
     cli::cli_warn(paste0(table, "omop table is empty."))
     return(NULL)
@@ -173,7 +183,10 @@ summariseMissingDataFromTable <- function(table, cdm, col, dateRange, sample, se
     # summarise missing data
     summariseMissingInternal(
       strata = strata,
-      columns = col_table
+      columns = col_table,
+      cdm = cdm,
+      table = table
+
     ) |>
     dplyr::mutate(omop_table = table) |>
     # order columns

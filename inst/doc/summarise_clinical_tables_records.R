@@ -73,6 +73,14 @@ summarisedResult |>
   select(group_level, variable_name, estimate_name, estimate_value) |>
   glimpse()
 
+## -----------------------------------------------------------------------------
+summarisedResult <- summariseClinicalRecords(cdm, "drug_exposure",
+  dateRange = as.Date(c("1990-01-01", "2010-01-01"))) 
+
+summarisedResult |>
+  omopgenerics::settings()|>
+  glimpse()
+
 ## ----warning=FALSE------------------------------------------------------------
 summarisedResult <- summariseClinicalRecords(cdm,
   "condition_occurrence",
@@ -91,12 +99,11 @@ summarisedResult |>
 ## ----warning=FALSE------------------------------------------------------------
 summarisedResult <- summariseRecordCount(cdm, "drug_exposure", interval = "years")
 
-summarisedResult |> print()
+summarisedResult |> tableRecordCount(type = "gt")
 
-summarisedResult |> plotRecordCount()
 
 ## ----warning=FALSE------------------------------------------------------------
-summariseRecordCount(cdm, "drug_exposure", interval = "months") |>
+summariseRecordCount(cdm, "drug_exposure", interval = "quarters") |>
   plotRecordCount()
 
 ## ----warning=FALSE------------------------------------------------------------
@@ -131,6 +138,14 @@ summariseRecordCount(cdm, "drug_exposure",
   )
 ) |>
   plotRecordCount(facet = omop_table ~ age_group, colour = "sex")
+
+## -----------------------------------------------------------------------------
+summariseRecordCount(cdm, "drug_exposure",
+  interval = "years",
+  sex = TRUE, 
+  dateRange = as.Date(c("1990-01-01", "2010-01-01"))) |>
+  tableRecordCount(type = "gt")
+
 
 ## ----warning=FALSE------------------------------------------------------------
 PatientProfiles::mockDisconnect(cdm = cdm)
