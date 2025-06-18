@@ -7,32 +7,38 @@
 #' @param ageGroup A list of age groups to stratify the results by. Each element represents a specific age range.
 #' @param sex Logical; whether to stratify results by sex (`TRUE`) or not (`FALSE`).
 #' @inheritParams dateRange-startDate
-#' @param conceptIdCount Logical; whether to summarise concept ID counts (`TRUE`) or not (`FALSE`).
+#' @param conceptIdCounts Logical; whether to summarise concept ID counts (`TRUE`) or not (`FALSE`).
 #' @param ... additional arguments passed to the OmopSketch functions that are used internally.
 #' @return A `summarised_result` object containing the results of the characterisation.
 #' @export
 #' @examples
 #' \donttest{
+#'
 #' cdm <- mockOmopSketch(numberIndividuals = 100)
 #'
-#' result <- databaseCharacteristics(cdm)
+#' result <- databaseCharacteristics(cdm = cdm,
+#' omopTableNam = c("drug_exposure", "condition_occurrence"),
+#' sex = TRUE, ageGroup = list(c(0,50), c(51,100)), interval = "years", conceptIdCounts = FALSE)
 #'
 #' PatientProfiles::mockDisconnect(cdm)
 #' }
 
 databaseCharacteristics <- function(cdm,
                                     omopTableName = c(
-                                      "person", "observation_period", "visit_occurrence", "condition_occurrence", "drug_exposure", "procedure_occurrence",
+                                      "person", "observation_period", "visit_occurrence",
+                                      "condition_occurrence", "drug_exposure", "procedure_occurrence",
                                       "device_exposure", "measurement", "observation", "death"
-                                    ),
+                                      ),
                                     sex = FALSE,
                                     ageGroup = NULL,
                                     dateRange = NULL,
                                     interval = "overall",
-                                    conceptIdCount = FALSE,
+                                    conceptIdCounts = FALSE,
                                     ...) {
 
   rlang::check_installed("CohortCharacteristics")
+  rlang::check_installed("CohortConstructor")
+
 
   cdm <- omopgenerics::validateCdmArgument(cdm)
   opts <- omopgenerics::omopTables()
@@ -42,7 +48,7 @@ databaseCharacteristics <- function(cdm,
   ageGroup <- omopgenerics::validateAgeGroupArgument(ageGroup, multipleAgeGroup = FALSE)
   dateRange <- validateStudyPeriod(cdm, dateRange)
   omopgenerics::assertChoice(interval, c("overall", "years", "quarters", "months"), length = 1)
-  omopgenerics::assertLogical(conceptIdCount, length = 1)
+  omopgenerics::assertLogical(conceptIdCounts, length = 1)
 
   args_list <- list(...)
 
@@ -107,7 +113,7 @@ databaseCharacteristics <- function(cdm,
 
 
   # Summarise missing data
-  cli::cli_inform(paste(cli::symbol$arrow_right,"Summarising missing data"))
+  cli::cli_inform(paste(cli::symbol$arrow_right, "Summarising missing data"))
   result$missingData <- do.call(
     summariseMissingData,
     c(list(
@@ -122,9 +128,25 @@ databaseCharacteristics <- function(cdm,
 
   omopTableName <- omopTableName[omopTableName != "person"]
 
-  if (conceptIdCount) {
+  # Summarise table quality
+  cli::cli_inform(paste(cli::symbol$arrow_right, "Summarising table quality"))
+  result$tableQuality <- do.call(
+    summariseTableQuality,
+    c(list(
+      cdm,
+      omopTableName = omopTableName,
+      sex = sex,
+      ageGroup = ageGroup,
+      interval = interval,
+      dateRange = dateRange
+    ), filter_args(summariseTableQuality, args_list))
+  )
+
+
+  if (conceptIdCounts) {
+
     cli::cli_inform(paste(cli::symbol$arrow_right,"Summarising concept id counts"))
-    result$conceptIdCount <- do.call(
+    result$conceptIdCounts <- do.call(
       summariseConceptIdCounts,
       c(list(
         cdm,

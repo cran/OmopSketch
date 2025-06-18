@@ -9,10 +9,10 @@ tableOmopSnapshot(result, type = "gt")
 \arguments{
 \item{result}{Output from summariseOmopSnapshot().}
 
-\item{type}{Type of formatting output table, either "gt" or "flextable".}
+\item{type}{Type of formatting output table. See \code{visOmopResults::tableType()} for allowed options. Default is \code{"gt"}.}
 }
 \value{
-A gt or flextable object with the summarised data.
+A formatted table object with the summarised data.
 }
 \description{
 Create a visual table from a summarise_omop_snapshot result.
@@ -21,10 +21,9 @@ Create a visual table from a summarise_omop_snapshot result.
 \donttest{
 cdm <- mockOmopSketch(numberIndividuals = 10)
 
-result <- summariseOmopSnapshot(cdm)
+result <- summariseOmopSnapshot(cdm = cdm)
 
-result |>
-  tableOmopSnapshot()
+tableOmopSnapshot(result = result)
 
 PatientProfiles::mockDisconnect(cdm)
 }

@@ -50,6 +50,10 @@ summariseMissingInternal <- function(x, strata, columns, cdm, table) {
       dplyr::collect() |>
       dplyr::mutate(dplyr::across(
         dplyr::all_of(names(q_na)),
+        ~ dplyr::coalesce(.x, 0L)
+      )) |>
+      dplyr::mutate(dplyr::across(
+        dplyr::all_of(names(q_na)),
         \(x) sprintf("%.2f", 100 * as.numeric(x) / as.numeric(.data$total_counts)),
         .names = "percentage_{.col}"
       )) |>
@@ -84,6 +88,10 @@ summariseMissingInternal <- function(x, strata, columns, cdm, table) {
         dplyr::group_by(dplyr::across(dplyr::all_of(stratak))) |>
         dplyr::summarise(total_counts = dplyr::n(), !!!q_zero, .groups = "drop") |>
         dplyr::collect() |>
+        dplyr::mutate(dplyr::across(
+          dplyr::all_of(names(q_zero)),
+          ~ dplyr::coalesce(.x, 0L)
+        )) |>
         dplyr::mutate(dplyr::across(
           dplyr::all_of(names(q_zero)),
           \(x) sprintf("%.2f", 100 * as.numeric(x) / as.numeric(.data$total_counts)),
@@ -122,7 +130,7 @@ summariseMissingInternal <- function(x, strata, columns, cdm, table) {
   }) |>
     dplyr::bind_rows()
 }
-sampleOmopTable <- function(x, sample, name) {
+sampleOmopTable <- function(x, sample) {
   if (is.null(sample)) {
     return(x)
   }
@@ -238,6 +246,26 @@ restrictStudyPeriod <- function(omopTable, dateRange) {
 
   warningEmptyStudyPeriod(omopTable)
 }
+
+trimStudyPeriod <- function(omopTable, dateRange) {
+  if (!is.null(dateRange)) {
+    table <- omopgenerics::tableName(omopTable)
+    start_date_col <- omopgenerics::omopColumns(table = table, field = "start_date")
+    end_date_col <- omopgenerics::omopColumns(table = table, field = "end_date")
+    start_date <- dateRange[1]
+    end_date <- dateRange[2]
+
+    omopTable <- omopTable |>
+      dplyr::mutate(
+        !!start_date_col := dplyr::if_else(.data[[start_date_col]] < .env$start_date, .env$start_date, .data[[start_date_col]]),
+        !!end_date_col := dplyr::if_else(.data[[end_date_col]] > .env$end_date, .env$end_date, .data[[end_date_col]])
+      ) |>
+      dplyr::filter(.data[[start_date_col]] <= .data[[end_date_col]])
+  }
+  warningEmptyStudyPeriod(omopTable)
+}
+
+
 warningEmptyStudyPeriod <- function(omopTable) {
   if (omopgenerics::isTableEmpty(omopTable)) {
     cli::cli_warn(paste0(omopgenerics::tableName(omopTable), " omop table is empty after application of date range."))
@@ -248,3 +276,22 @@ warningEmptyStudyPeriod <- function(omopTable) {
 strataCols <- function(sex = FALSE, ageGroup = NULL, interval = "overall") {
   c(names(ageGroup), "sex"[sex], "interval"[interval != "overall"])
 }
+
+summariseSumInternal <- function(x, strata, variable) {
+
+  purrr::map(strata, \(stratak) {
+    x |>
+      dplyr::group_by(dplyr::across(dplyr::all_of(stratak))) |>
+      dplyr::summarise(estimate_value = sum(.data[[variable]], na.rm = TRUE), .groups = "drop") |>
+      dplyr::collect() |>
+      dplyr::mutate(estimate_value =  sprintf("%i", as.integer(.data$estimate_value))) |>
+      dplyr::mutate(estimate_type = "integer", estimate_name = "count") |>
+      dplyr::select(dplyr::all_of(c(
+        stratak, "estimate_name", "estimate_type",
+        "estimate_value"
+      )))
+  }) |>
+    dplyr::bind_rows()
+}
+
+

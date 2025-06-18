@@ -6,7 +6,7 @@
 #'   - `"source"`: Show only source codes.
 #'   - `"missing standard"`: Show only source codes that are missing a mapped standard concept.
 #' @param type Type of formatting output table, either "reactable" or "datatable".
-#' @return A gt or flextable object with the summarised data.
+#' @return A reactable or datatable object with the summarised data.
 #' @export
 #' @examples
 #' \donttest{
@@ -18,8 +18,8 @@
 #' con <- dbConnect(duckdb(), eunomiaDir())
 #' cdm <- cdmFromCon(con = con, cdmSchema = "main", writeSchema = "main")
 #'
-#' result <- summariseConceptIdCounts(cdm, "condition_occurrence")
-#' result |> tableConceptIdCounts()
+#' result <- summariseConceptIdCounts(cdm = cdm, omopTableName = "condition_occurrence")
+#' tableConceptIdCounts(result = result, display = "standard")
 #' }
 tableConceptIdCounts <- function(result,
                                  display = "overall",

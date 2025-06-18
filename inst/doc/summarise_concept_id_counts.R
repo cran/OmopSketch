@@ -84,3 +84,20 @@ tableConceptIdCounts(result, display = "missing source")
 tableConceptIdCounts(result, display = "missing standard")
 
 
+## ----warning=FALSE------------------------------------------------------------
+result <- summariseConceptIdCounts(cdm,
+  omopTableName = "drug_exposure",
+  countBy = "record"
+) 
+tableTopConceptCounts(result, type = "gt")
+
+## -----------------------------------------------------------------------------
+tableTopConceptCounts(result, top = 5)
+
+## ----warning=FALSE------------------------------------------------------------
+result <- summariseConceptIdCounts(cdm,
+  omopTableName = "drug_exposure",
+  countBy = c("record", "person")
+) 
+tableTopConceptCounts(result, countBy = "person")
+

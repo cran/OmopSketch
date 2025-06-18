@@ -9,10 +9,10 @@ tableObservationPeriod(result, type = "gt")
 \arguments{
 \item{result}{A summarised_result object.}
 
-\item{type}{Type of formatting output table, either "gt" or "flextable".}
+\item{type}{Type of formatting output table. See \code{visOmopResults::tableType()} for allowed options. Default is \code{"gt"}.}
 }
 \value{
-A gt or flextable object with the summarised data.
+A formatted table object with the summarised data.
 }
 \description{
 Create a visual table from a summariseObservationPeriod() result.
@@ -21,10 +21,10 @@ Create a visual table from a summariseObservationPeriod() result.
 \donttest{
 cdm <- mockOmopSketch(numberIndividuals = 100)
 
-result <- summariseObservationPeriod(cdm$observation_period)
+result <- summariseObservationPeriod(observationPeriod = cdm$observation_period)
 
-tableObservationPeriod(result)
+tableObservationPeriod(result = result)
 
-PatientProfiles::mockDisconnect(cdm)
+PatientProfiles::mockDisconnect(cdm = cdm)
 }
 }

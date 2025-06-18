@@ -20,7 +20,7 @@ tableConceptIdCounts(result, display = "overall", type = "reactable")
 \item{type}{Type of formatting output table, either "reactable" or "datatable".}
 }
 \value{
-A gt or flextable object with the summarised data.
+A reactable or datatable object with the summarised data.
 }
 \description{
 Create a visual table from a summariseConceptIdCounts() result.
@@ -35,7 +35,7 @@ requireEunomia()
 con <- dbConnect(duckdb(), eunomiaDir())
 cdm <- cdmFromCon(con = con, cdmSchema = "main", writeSchema = "main")
 
-result <- summariseConceptIdCounts(cdm, "condition_occurrence")
-result |> tableConceptIdCounts()
+result <- summariseConceptIdCounts(cdm = cdm, omopTableName = "condition_occurrence")
+tableConceptIdCounts(result = result, display = "standard")
 }
 }

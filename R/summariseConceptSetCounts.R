@@ -19,7 +19,7 @@
 #'
 #' cdm <- mockOmopSketch()
 #'
-#' cs <- list(sumatriptan = c(35604883, 35604879, 35604880, 35604884))
+#' cs <- list(sinusitis = c(4283893, 257012, 40481087, 4294548))
 #'
 #' results <- summariseConceptSetCounts(cdm, conceptSet = cs)
 #'
@@ -35,6 +35,11 @@ summariseConceptSetCounts <- function(cdm,
                                       sex = FALSE,
                                       ageGroup = NULL,
                                       dateRange = NULL) {
+  lifecycle::deprecate_warn(
+    when = "0.5.0",
+    what = "summariseConceptSetCounts()",
+    with = NULL
+  )
   # initial check
   cdm <- omopgenerics::validateCdmArgument(cdm)
   omopgenerics::assertChoice(countBy, choices = c("record", "person"))

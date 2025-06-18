@@ -1,6 +1,6 @@
 Package: OmopSketch
 Title: Characterise Tables of an OMOP Common Data Model Instance
-Version: 0.4.0
+Version: 0.5.0
 Authors@R: c(
     person( 
         "Marta", "Alcalde-Herraiz", 
@@ -36,10 +36,10 @@ License: Apache License (>= 2)
 Encoding: UTF-8
 RoxygenNote: 7.3.2
 Suggests: CodelistGenerator, CohortCharacteristics, DBI, duckdb, DT,
-        flextable, gt, here, knitr, lubridate, odbc, OmopViewer,
-        reactable, remotes, rmarkdown, RPostgres, testthat (>= 3.0.0),
-        withr, omock (>= 0.3.0), covr, ggplot2, visOmopResults (>=
-        0.5.0), devtools
+        flextable, gt, here, knitr, lubridate, odbc, OmopViewer (>=
+        0.3.0), sortable, reactable, remotes, rmarkdown, RPostgres,
+        shinyWidgets, testthat (>= 3.0.0), withr, omock (>= 0.3.0),
+        covr, ggplot2, visOmopResults (>= 0.5.0), devtools
 Config/testthat/edition: 3
 Config/testthat/parallel: true
 Imports: CDMConnector (>= 1.3.0), cli, clock, CohortConstructor (>=
@@ -51,7 +51,7 @@ URL: https://OHDSI.github.io/OmopSketch/
 BugReports: https://github.com/OHDSI/OmopSketch/issues
 VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2025-05-15 14:07:13 UTC; ccampanile
+Packaged: 2025-06-18 19:20:12 UTC; ccampanile
 Author: Marta Alcalde-Herraiz [aut] (ORCID:
     <https://orcid.org/0009-0002-4405-1814>),
   Kim Lopez-Guell [aut] (ORCID: <https://orcid.org/0000-0002-8462-8668>),
@@ -61,4 +61,4 @@ Author: Marta Alcalde-Herraiz [aut] (ORCID:
   Edward Burn [aut] (ORCID: <https://orcid.org/0000-0002-9286-1128>),
   Martí Català [aut] (ORCID: <https://orcid.org/0000-0003-3308-9905>)
 Repository: CRAN
-Date/Publication: 2025-05-15 15:00:06 UTC
+Date/Publication: 2025-06-18 20:30:02 UTC

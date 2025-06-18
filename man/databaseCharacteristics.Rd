@@ -13,7 +13,7 @@ databaseCharacteristics(
   ageGroup = NULL,
   dateRange = NULL,
   interval = "overall",
-  conceptIdCount = FALSE,
+  conceptIdCounts = FALSE,
   ...
 )
 }
@@ -33,7 +33,7 @@ If \code{dateRange} is \code{NULL}, no restriction is applied.}
 
 \item{interval}{Time interval to stratify by. It can either be "years", "quarters", "months" or "overall".}
 
-\item{conceptIdCount}{Logical; whether to summarise concept ID counts (\code{TRUE}) or not (\code{FALSE}).}
+\item{conceptIdCounts}{Logical; whether to summarise concept ID counts (\code{TRUE}) or not (\code{FALSE}).}
 
 \item{...}{additional arguments passed to the OmopSketch functions that are used internally.}
 }
@@ -45,9 +45,12 @@ Summarise Database Characteristics for OMOP CDM
 }
 \examples{
 \donttest{
+
 cdm <- mockOmopSketch(numberIndividuals = 100)
 
-result <- databaseCharacteristics(cdm)
+result <- databaseCharacteristics(cdm = cdm,
+omopTableNam = c("drug_exposure", "condition_occurrence"),
+sex = TRUE, ageGroup = list(c(0,50), c(51,100)), interval = "years", conceptIdCounts = FALSE)
 
 PatientProfiles::mockDisconnect(cdm)
 }

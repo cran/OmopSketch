@@ -9,10 +9,10 @@ tableInObservation(result, type = "gt")
 \arguments{
 \item{result}{A summarised_result object.}
 
-\item{type}{Type of formatting output table, either "gt", "reactable" or "datatable".}
+\item{type}{Type of formatting output table. See \code{visOmopResults::tableType()} for allowed options. Default is \code{"gt"}}
 }
 \value{
-A gt or flextable object with the summarised data.
+A formatted table object with the summarised data.
 }
 \description{
 Create a visual table from a summariseInObservation() result.
@@ -24,7 +24,7 @@ library(dplyr, warn.conflicts = FALSE)
 cdm <- mockOmopSketch()
 
 result <- summariseInObservation(
-  cdm$observation_period,
+  observationPeriod = cdm$observation_period,
   interval = "months",
   output = c("person-days", "record"),
   ageGroup = list("<=60" = c(0, 60), ">60" = c(61, Inf)),

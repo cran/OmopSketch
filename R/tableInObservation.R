@@ -1,7 +1,7 @@
 #' Create a visual table from a summariseInObservation() result.
 #' @param result A summarised_result object.
-#' @param type Type of formatting output table, either "gt", "reactable" or "datatable".
-#' @return A gt or flextable object with the summarised data.
+#' @param  type Type of formatting output table. See `visOmopResults::tableType()` for allowed options. Default is `"gt"`
+#' @return A formatted table object with the summarised data.
 #' @export
 #' @examples
 #' \donttest{
@@ -10,7 +10,7 @@
 #' cdm <- mockOmopSketch()
 #'
 #' result <- summariseInObservation(
-#'   cdm$observation_period,
+#'   observationPeriod = cdm$observation_period,
 #'   interval = "months",
 #'   output = c("person-days", "record"),
 #'   ageGroup = list("<=60" = c(0, 60), ">60" = c(61, Inf)),
@@ -64,7 +64,7 @@ tableInObservation <- function(result,
     formatted_result |>
       dplyr::rename(!!!rename_vec) |>
       visOmopResults::formatEstimateName(estimateName = formatEstimates) |>
-      dplyr::rename("Estimate name" = .data$estimate_name) |>
+      dplyr::rename("Estimate name" = "estimate_name") |>
       dplyr::select(dplyr::any_of(c(
         "Database name",
         "Variable name",
@@ -84,7 +84,7 @@ tableInObservation <- function(result,
 
     formatted_result |>
       dplyr::rename(!!!rename_vec) |>
-      dplyr::rename("Estimate name" = .data$estimate_name) |>
+      dplyr::rename("Estimate name" = "estimate_name") |>
       dplyr::mutate(estimate_value = as.numeric(.data$estimate_value)) |>
       dplyr::select(dplyr::any_of(c(
         "Database name",
