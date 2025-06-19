@@ -390,6 +390,14 @@ cdm</h2>
 <p>We begin by loading the necessary packages and creating a mock CDM
 using the <code>mockOmopSketch()</code> function:</p>
 <pre class="r"><code>library(dplyr)
+#&gt; 
+#&gt; Attaching package: &#39;dplyr&#39;
+#&gt; The following objects are masked from &#39;package:stats&#39;:
+#&gt; 
+#&gt;     filter, lag
+#&gt; The following objects are masked from &#39;package:base&#39;:
+#&gt; 
+#&gt;     intersect, setdiff, setequal, union
 library(OmopSketch)
 
 cdm &lt;- mockOmopSketch()
@@ -428,90 +436,7 @@ packages</p></li>
 <code>summariseClinicalRecords()</code> and
 <code>summariseRecordCount()</code></p></li>
 </ul>
-<pre class="r"><code>result &lt;- databaseCharacteristics(cdm)
-#&gt; The characterisation will focus on the following OMOP tables: person,
-#&gt; observation_period, visit_occurrence, condition_occurrence, drug_exposure,
-#&gt; procedure_occurrence, device_exposure, measurement, observation, and death
-#&gt; → Getting cdm snapshot
-#&gt; Warning: Vocabulary version in cdm_source (NA) doesn&#39;t match the one in the vocabulary
-#&gt; table (v5.0 18-JAN-19)
-#&gt; → Getting population characteristics
-#&gt; ℹ Building new trimmed cohort
-#&gt; Creating initial cohort
-#&gt; ✔ Cohort trimmed
-#&gt; ℹ adding demographics columns
-#&gt; 
-#&gt; ℹ summarising data
-#&gt; 
-#&gt; ℹ summarising cohort general_population
-#&gt; 
-#&gt; ✔ summariseCharacteristics finished!
-#&gt; 
-#&gt; → Summarising missing data
-#&gt; Warning: These columns contain missing values, which are not permitted:
-#&gt; &quot;race_concept_id&quot; and &quot;ethnicity_concept_id&quot;
-#&gt; Warning: These columns contain missing values, which are not permitted:
-#&gt; &quot;period_type_concept_id&quot;
-#&gt; Warning: device_exposureomop table is empty.
-#&gt; ! 56 duplicated rows eliminated.
-#&gt; → Summarising table quality
-#&gt; Warning: device_exposureomop table is empty.
-#&gt; → Summarising clinical records
-#&gt; ℹ Adding variables of interest to observation_period.
-#&gt; ℹ Summarising records per person in observation_period.
-#&gt; ℹ Summarising observation_period: `in_observation` and `type_concept`.
-#&gt; ℹ Adding variables of interest to visit_occurrence.
-#&gt; ℹ Summarising records per person in visit_occurrence.
-#&gt; ℹ Summarising visit_occurrence: `in_observation`, `standard_concept`,
-#&gt;   `source_vocabulary`, `domain_id`, and `type_concept`.
-#&gt; ℹ Adding variables of interest to condition_occurrence.
-#&gt; ℹ Summarising records per person in condition_occurrence.
-#&gt; ℹ Summarising condition_occurrence: `in_observation`, `standard_concept`,
-#&gt;   `source_vocabulary`, `domain_id`, and `type_concept`.
-#&gt; ℹ Adding variables of interest to drug_exposure.
-#&gt; ℹ Summarising records per person in drug_exposure.
-#&gt; ℹ Summarising drug_exposure: `in_observation`, `standard_concept`,
-#&gt;   `source_vocabulary`, `domain_id`, and `type_concept`.
-#&gt; ℹ Adding variables of interest to procedure_occurrence.
-#&gt; ℹ Summarising records per person in procedure_occurrence.
-#&gt; ℹ Summarising procedure_occurrence: `in_observation`, `standard_concept`,
-#&gt;   `source_vocabulary`, `domain_id`, and `type_concept`.
-#&gt; Warning: device_exposure is empty.
-#&gt; ℹ Adding variables of interest to measurement.
-#&gt; ℹ Summarising records per person in measurement.
-#&gt; ℹ Summarising measurement: `in_observation`, `standard_concept`,
-#&gt;   `source_vocabulary`, `domain_id`, and `type_concept`.
-#&gt; ℹ Adding variables of interest to observation.
-#&gt; ℹ Summarising records per person in observation.
-#&gt; ℹ Summarising observation: `in_observation`, `standard_concept`,
-#&gt;   `source_vocabulary`, `domain_id`, and `type_concept`.
-#&gt; ℹ Adding variables of interest to death.
-#&gt; ℹ Summarising records per person in death.
-#&gt; ℹ Summarising death: `in_observation`, `standard_concept`, `source_vocabulary`,
-#&gt;   `domain_id`, and `type_concept`.
-#&gt; → Summarising record counts
-#&gt; Warning: device_exposure omop table is empty after application of date range.
-#&gt; → Summarising in observation records, subjects, person-days, age and sex
-#&gt; ℹ The following estimates will be computed:
-#&gt; • age: median
-#&gt; → Start summary of data, at 2025-06-18 20:18:17.374429
-#&gt; 
-#&gt; ✔ Summary finished, at 2025-06-18 20:18:17.425096
-#&gt; → Summarising observation period
-#&gt; ☺ Database characterisation finished. Code ran in 0 min and 16 sec
-#&gt; ℹ 1 table created: &quot;og_075_1750274284&quot;.
-omopgenerics::settings(result) |&gt; dplyr::select(&quot;result_id&quot;, &quot;result_type&quot;, &quot;package_name&quot;)
-#&gt; # A tibble: 8 × 3
-#&gt;   result_id result_type                  package_name         
-#&gt;       &lt;int&gt; &lt;chr&gt;                        &lt;chr&gt;                
-#&gt; 1         1 summarise_omop_snapshot      OmopSketch           
-#&gt; 2         2 summarise_characteristics    CohortCharacteristics
-#&gt; 3         3 summarise_missing_data       OmopSketch           
-#&gt; 4         4 summarise_table_quality      OmopSketch           
-#&gt; 5         5 summarise_clinical_records   OmopSketch           
-#&gt; 6         6 summarise_record_count       OmopSketch           
-#&gt; 7         7 summarise_in_observation     OmopSketch           
-#&gt; 8         8 summarise_observation_period OmopSketch</code></pre>
+<pre class="r"><code>result &lt;- databaseCharacteristics(cdm)</code></pre>
 <div id="selecting-tables-to-characterise" class="section level2" number="3.1">
 <h2><span class="header-section-number">3.1</span> Selecting tables to
 characterise</h2>

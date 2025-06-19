@@ -1,6 +1,6 @@
 Package: OmopSketch
 Title: Characterise Tables of an OMOP Common Data Model Instance
-Version: 0.5.0
+Version: 0.5.1
 Authors@R: c(
     person( 
         "Marta", "Alcalde-Herraiz", 
@@ -51,7 +51,7 @@ URL: https://OHDSI.github.io/OmopSketch/
 BugReports: https://github.com/OHDSI/OmopSketch/issues
 VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2025-06-18 19:20:12 UTC; ccampanile
+Packaged: 2025-06-19 19:09:02 UTC; ccampanile
 Author: Marta Alcalde-Herraiz [aut] (ORCID:
     <https://orcid.org/0009-0002-4405-1814>),
   Kim Lopez-Guell [aut] (ORCID: <https://orcid.org/0000-0002-8462-8668>),
@@ -61,4 +61,4 @@ Author: Marta Alcalde-Herraiz [aut] (ORCID:
   Edward Burn [aut] (ORCID: <https://orcid.org/0000-0002-9286-1128>),
   Martí Català [aut] (ORCID: <https://orcid.org/0000-0003-3308-9905>)
 Repository: CRAN
-Date/Publication: 2025-06-18 20:30:02 UTC
+Date/Publication: 2025-06-19 19:50:06 UTC

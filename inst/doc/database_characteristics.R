@@ -13,9 +13,8 @@ cdm <- mockOmopSketch()
 
 cdm
 
-## -----------------------------------------------------------------------------
-result <- databaseCharacteristics(cdm)
-omopgenerics::settings(result) |> dplyr::select("result_id", "result_type", "package_name")
+## ----eval = FALSE-------------------------------------------------------------
+# result <- databaseCharacteristics(cdm)
 
 ## ----eval=FALSE---------------------------------------------------------------
 # result <- databaseCharacteristics(cdm, omopTableName = c("drug_exposure", "condition_occurrence"))

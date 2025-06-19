@@ -25,17 +25,14 @@ summarisedResult |>
   filter(variable_name == "Duration in days") |>
   select(group_level, variable_name, estimate_name, estimate_value)
 
-## ----warning=FALSE------------------------------------------------------------
-summarisedResult <- summariseObservationPeriod(cdm$observation_period,
-  estimates = c("mean", "sd", "q05", "q95"),
-  sex = TRUE,
-  ageGroup = list("<35" = c(0, 34), ">=35" = c(35, Inf)),
-  dateRange = as.Date(c("1970-01-01", "2010-01-01"))
-)
-
-summarisedResult |>
-  select(group_level, variable_name, strata_level, estimate_name, estimate_value) |>
-  glimpse()
+## ----warning=FALSE, eval=FALSE------------------------------------------------
+# summarisedResult <- summariseObservationPeriod(cdm$observation_period,
+#   estimates = c("mean", "sd", "q05", "q95"),
+#   sex = TRUE,
+#   ageGroup = list("<35" = c(0, 34), ">=35" = c(35, Inf)),
+#   dateRange = as.Date(c("1970-01-01", "2010-01-01"))
+# )
+# 
 
 ## ----warning=FALSE------------------------------------------------------------
 summarisedResult <- summariseObservationPeriod(cdm$observation_period,
@@ -81,13 +78,11 @@ summarisedResult <- summariseInObservation(cdm$observation_period,
 summarisedResult |>
   select(variable_name, estimate_name, estimate_value, additional_name, additional_level)
 
-## ----warning=FALSE------------------------------------------------------------
-summarisedResult <- summariseInObservation(cdm$observation_period,
-  interval = "months"
-)
-
-summarisedResult |>
-  select(variable_name, estimate_name, estimate_value, additional_name, additional_level)
+## ----warning=FALSE, eval = FALSE----------------------------------------------
+# summarisedResult <- summariseInObservation(cdm$observation_period,
+#   interval = "months"
+# )
+# 
 
 ## ----warning=FALSE------------------------------------------------------------
 
@@ -98,18 +93,18 @@ summarisedResult <- summariseInObservation(cdm$observation_period,
 summarisedResult |>
   select(variable_name, estimate_name, estimate_value, additional_name, additional_level)
 
-## ----warning=FALSE------------------------------------------------------------
-
-summarisedResult <- summariseInObservation(cdm$observation_period, 
-                                           output = c("record", "person-days"),
-                                           interval = "quarters",
-                                           sex = TRUE, 
-                                           ageGroup = list("<35" = c(0, 34), ">=35" = c(35, Inf)), 
-                                           dateRange = as.Date(c("1970-01-01", "2010-01-01")))                                        
-
-
-summarisedResult |>
-  select(strata_level, variable_name, estimate_name, estimate_value, additional_name, additional_level)
+## ----warning=FALSE, eval = FALSE----------------------------------------------
+# 
+# summarisedResult <- summariseInObservation(cdm$observation_period,
+#                                            output = c("record", "person-days"),
+#                                            interval = "quarters",
+#                                            sex = TRUE,
+#                                            ageGroup = list("<35" = c(0, 34), ">=35" = c(35, Inf)),
+#                                            dateRange = as.Date(c("1970-01-01", "2010-01-01")))
+# 
+# 
+# summarisedResult |>
+#   select(strata_level, variable_name, estimate_name, estimate_value, additional_name, additional_level)
 
 ## -----------------------------------------------------------------------------
 summarisedResult <- summariseInObservation(cdm$observation_period, 
