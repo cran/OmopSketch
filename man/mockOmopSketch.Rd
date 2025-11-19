@@ -2,39 +2,28 @@
 % Please edit documentation in R/mockOmopSketch.R
 \name{mockOmopSketch}
 \alias{mockOmopSketch}
-\title{Creates a mock database to test OmopSketch package.}
+\title{Creates a mock database to test OmopSketch package}
 \usage{
 mockOmopSketch(
-  con = NULL,
-  writeSchema = NULL,
   numberIndividuals = 100,
-  seed = NULL
+  con = lifecycle::deprecated(),
+  writeSchema = lifecycle::deprecated(),
+  seed = lifecycle::deprecated()
 )
 }
 \arguments{
-\item{con}{A DBI connection to create the cdm mock object. By default, the
-connection would be a 'duckdb' one.}
-
-\item{writeSchema}{Name of an schema of the DBI connection with writing
-permissions.}
-
 \item{numberIndividuals}{Number of individuals to create in the cdm
 reference object.}
 
-\item{seed}{An optional integer used to set the seed for random number
-generation, ensuring reproducibility of the generated data. If provided, this
-seed allows the function to produce consistent results each time it is run
-with the same inputs. If 'NULL', the seed is not set, which can lead to
-different outputs on each run.}
+\item{con}{deprecated.}
+
+\item{writeSchema}{deprecated.}
+
+\item{seed}{deprecated.}
 }
 \value{
 A mock cdm_reference object.
 }
 \description{
-Creates a mock database to test OmopSketch package.
-}
-\examples{
-\donttest{
-mockOmopSketch(numberIndividuals = 100)
-}
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
 }

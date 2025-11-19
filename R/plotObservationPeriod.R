@@ -1,38 +1,33 @@
-#' Create a plot from the output of summariseObservationPeriod().
+
+#' Create a plot from the output of summariseObservationPeriod()
 #'
-#' @param result A summarised_result object.
-#' @param variableName The variable to plot it can be: "number subjects",
-#' "records per person", "duration" or "days to next observation period".
+#' @param result A summarised_result object (output of
+#' `summariseObservationPeriod()`).
+#' @param variableName The variable to plot it can be: "Number subjects",
+#' "Records per person", "Duration in days" or
+#' "Days to next observation period".
 #' @param plotType The plot type, it can be: "barplot", "boxplot" or
 #' "densityplot".
-#' @param facet Columns to colour by. See possible columns to colour by with:
-#' `visOmopResults::tidyColumns()`.
-#' @param colour Columns to colour by. See possible columns to colour by with:
-#' `visOmopResults::tidyColumns()`.
-#' @return A ggplot2 object.
+#' @inheritParams consistent-doc
+#' @inheritParams plot-doc
+#'
+#' @return A plot visualisation.
 #' @export
-#' @examples
-#' \donttest{
-#' cdm <- mockOmopSketch(numberIndividuals = 100)
 #'
-#' result <- summariseObservationPeriod(observationPeriod = cdm$observation_period)
+#' @inherit summariseObservationPeriod examples
 #'
-#' plotObservationPeriod(result = result,
-#'     variableName = "Duration in days",
-#'     plotType = "boxplot"
-#'   )
-#'
-#' PatientProfiles::mockDisconnect(cdm)
-#' }
 plotObservationPeriod <- function(result,
                                   variableName = "Number subjects",
                                   plotType = "barplot",
                                   facet = NULL,
-                                  colour = NULL) {
+                                  colour = NULL,
+                                  style = NULL) {
   rlang::check_installed("ggplot2")
   rlang::check_installed("visOmopResults")
   # initial checks
   omopgenerics::validateResultArgument(result)
+  style <- validateStyle(style = style, obj = "plot")
+
 
   # subset to result_type of interest
   result <- result |>
@@ -43,7 +38,7 @@ plotObservationPeriod <- function(result,
   # check if it is empty
   if (nrow(result) == 0) {
     warnEmpty("summarise_observation_period")
-    return(emptyPlot())
+    return(visOmopResults::emptyPlot(subtitle = "`result` does not contain any `summarise_observation_period` data", style = style))
   }
 
   variableNames <- unique(availablePlotObservationPeriod()$variable_name)
@@ -74,13 +69,31 @@ plotObservationPeriod <- function(result,
       dplyr::mutate(group_name = "observation_period_ordinal")
   }
 
+  main_title <- paste0(
+    stringr::str_to_sentence(variableName),
+    " (", stringr::str_to_sentence(plotType), ")"
+  )
+
+
+  # combine facet and colour names
+  vars <- c(colour, facet)
+  vars <- vars[vars != ""]
+
+  if (length(vars) > 0) {
+    # clean names: replace "_" or "-" with space and title case
+    clean_vars <- stringr::str_to_sentence(gsub("[-_]", " ", vars))
+    main_title <- paste(main_title, "by", paste(clean_vars, collapse = " and "))
+  }
+
   if (plotType == "barplot") {
     p <- visOmopResults::barPlot(
       result = result,
       x = "observation_period_ordinal",
       y = "count",
       facet = facet,
-      colour = colour
+      colour = colour,
+      style = style,
+      width = 0.8
     ) +
       ggplot2::ylab(stringr::str_to_sentence(unique(result$variable_name)))
   } else if (plotType == "boxplot") {
@@ -88,7 +101,8 @@ plotObservationPeriod <- function(result,
       result = result,
       x = "observation_period_ordinal",
       facet = facet,
-      colour = colour
+      colour = colour,
+      style = style
     )
   } else if (plotType == "densityplot") {
     p <- visOmopResults::scatterPlot(
@@ -100,7 +114,8 @@ plotObservationPeriod <- function(result,
       ribbon = FALSE,
       facet = facet,
       colour = colour,
-      group = optFacetColour
+      group = optFacetColour,
+      style = style
     ) +
       ggplot2::xlab(stringr::str_to_sentence(unique(result$variable_name))) +
       ggplot2::ylab("Density")
@@ -119,6 +134,10 @@ plotObservationPeriod <- function(result,
         levels = unique(.data$observation_period_ordinal[order(.data$observation_period_order)])
       )
     )
+  p <- p +
+    ggplot2::theme(legend.position = "top") +
+    ggplot2::labs(title = main_title) +
+    ggplot2::theme(plot.title = ggplot2::element_text(hjust = 0.5, face = "bold"))
   return(p)
 }
 

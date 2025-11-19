@@ -2,12 +2,13 @@
 % Please edit documentation in R/plotRecordCount.R
 \name{plotRecordCount}
 \alias{plotRecordCount}
-\title{Create a ggplot of the records' count trend.}
+\title{Create a ggplot of the records' count trend}
 \usage{
 plotRecordCount(result, facet = NULL, colour = NULL)
 }
 \arguments{
-\item{result}{Output from summariseRecordCount().}
+\item{result}{A summarised_result object (output of
+\code{summariseRecordCount()}).}
 
 \item{facet}{Columns to face by. Formula format can be provided. See possible
 columns to face by with: \code{visOmopResults::tidyColumns()}.}
@@ -16,14 +17,17 @@ columns to face by with: \code{visOmopResults::tidyColumns()}.}
 \code{visOmopResults::tidyColumns()}.}
 }
 \value{
-A ggplot showing the table counts
+A plot visualisation.
 }
 \description{
-Create a ggplot of the records' count trend.
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
 }
 \examples{
 \donttest{
-cdm <- mockOmopSketch()
+library(omock)
+library(OmopSketch)
+
+cdm <- mockCdmFromDataset(datasetName = "GiBleed", source = "duckdb")
 
 summarisedResult <- summariseRecordCount(
   cdm = cdm,
@@ -32,8 +36,13 @@ summarisedResult <- summariseRecordCount(
   sex = TRUE
 )
 
-plotRecordCount(result = summarisedResult, colour = "age_group", facet = sex ~ .)
+plotRecordCount(
+  result = summarisedResult,
+  colour = "age_group",
+  facet = sex ~ .
+)
 
-PatientProfiles::mockDisconnect(cdm = cdm)
+cdmDisconnect(cdm = cdm)
 }
+
 }

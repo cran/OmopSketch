@@ -2,45 +2,63 @@
 % Please edit documentation in R/shinyCharacteristics.R
 \name{shinyCharacteristics}
 \alias{shinyCharacteristics}
-\title{Generate an interactive Shiny application that visualises the results obtained from the \code{databaseCharacteristics()} function.}
+\title{Generate an interactive Shiny application that visualises the results
+obtained from the \code{databaseCharacteristics()} function}
 \usage{
 shinyCharacteristics(
   result,
   directory,
+  background = TRUE,
   title = "Database characterisation",
   logo = "ohdsi",
-  theme = "bslib::bs_theme(bootswatch = 'flatly')"
+  theme = "scarlet"
 )
 }
 \arguments{
-\item{result}{A summarised_result object containing the results from the \code{databaseCharacteristics()} function.
-This object should include summaries of various OMOP CDM tables, such as population characteristics, clinical records, missing data, and more}
+\item{result}{A summarised_result object (output of
+\code{databaseCharacteristics()}).}
 
-\item{directory}{A character string specifying the directory where the application
-will be saved.}
+\item{directory}{A character string specifying the directory where the
+application will be saved.}
 
-\item{title}{Title of the shiny. Default is "Characterisation"}
+\item{background}{Background panel for the Shiny app.
+\itemize{
+\item If set to \code{TRUE} (default), a standard background panel with a general
+description will be included.
+\item If set to \code{FALSE}, no background panel will be displayed.
+\item If it is a path (e.g., \code{"path/to/file.md"}) tha file will be used as
+background panel of your shiny App.
+}}
 
-\item{logo}{Name of a logo or path to a logo. If NULL no logo is included. Only svg format allowed for the moment.}
+\item{title}{Title of the shiny. Default is "Characterisation".}
 
-\item{theme}{A character string specifying the theme for the Shiny application.
-Default is \code{"bslib::bs_theme(bootswatch = 'flatly')"} to use the Flatly theme
-from the Bootswatch collection. You can customise this to use other themes.}
+\item{logo}{Name of a logo or path to a logo. If NULL no logo is included.
+Only svg format allowed for the moment.}
+
+\item{theme}{A character string specifying the theme for the Shiny
+application. It can be any of the OmopViewer supported themes.}
 }
 \value{
-This function invisibly returns NULL and generates a static Shiny app in the
-specified directory.
+This function invisibly returns NULL and generates a static Shiny app
+in the specified directory.
 }
 \description{
-Generate an interactive Shiny application that visualises the results obtained from the \code{databaseCharacteristics()} function.
+Generate an interactive Shiny application that visualises the results
+obtained from the \code{databaseCharacteristics()} function
 }
 \examples{
 \dontrun{
-
 library(OmopSketch)
-cdm <- mockOmopSketch()
+library(omock)
+library(here)
+
+cdm <- mockCdmFromDataset(datasetName = "GiBleed", source = "duckdb")
+
 res <- databaseCharacteristics(cdm = cdm)
-shinyCharacteristics(result = res, directory = here::here())
+
+shinyCharacteristics(result = res, directory = here())
+
+cdmDisconnect(cdm = cdm)
 }
 
 }

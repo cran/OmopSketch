@@ -1,74 +1,100 @@
+
 #' Summarise Database Characteristics for OMOP CDM
 #'
-#' @param cdm A `cdm_reference` object representing the Common Data Model (CDM) reference.
-#' @param omopTableName A character vector specifying the OMOP tables from the CDM to include in the analysis.
-#' If "person" is present, it will only be used for missing value summarisation.
-#' @inheritParams interval
-#' @param ageGroup A list of age groups to stratify the results by. Each element represents a specific age range.
-#' @param sex Logical; whether to stratify results by sex (`TRUE`) or not (`FALSE`).
+#' @inheritParams consistent-doc
 #' @inheritParams dateRange-startDate
-#' @param conceptIdCounts Logical; whether to summarise concept ID counts (`TRUE`) or not (`FALSE`).
-#' @param ... additional arguments passed to the OmopSketch functions that are used internally.
-#' @return A `summarised_result` object containing the results of the characterisation.
+#' @param conceptIdCounts Logical; whether to summarise concept ID counts
+#' (`TRUE`) or not (`FALSE`).
+#' @param ... additional arguments passed to the OmopSketch functions that are
+#' used internally.
+#'
+#' @return A `summarised_result` object with the results.
 #' @export
+#'
 #' @examples
 #' \donttest{
+#' library(OmopSketch)
+#' library(omock)
+#' library(dplyr)
+#' library(here)
 #'
-#' cdm <- mockOmopSketch(numberIndividuals = 100)
+#' cdm <- mockCdmFromDataset(datasetName = "GiBleed", source = "duckdb")
 #'
-#' result <- databaseCharacteristics(cdm = cdm,
-#' omopTableNam = c("drug_exposure", "condition_occurrence"),
-#' sex = TRUE, ageGroup = list(c(0,50), c(51,100)), interval = "years", conceptIdCounts = FALSE)
+#' result <- databaseCharacteristics(
+#'   cdm = cdm,
+#'   sample = 100,
+#'   omopTableName = c("drug_exposure", "condition_occurrence"),
+#'   sex = TRUE,
+#'   ageGroup = list(c(0, 50), c(51, 100)),
+#'   interval = "years",
+#'   conceptIdCounts = FALSE
+#' )
 #'
-#' PatientProfiles::mockDisconnect(cdm)
+#' result |>
+#'   glimpse()
+#'
+#' shinyCharacteristics(result = result, directory = here())
+#'
+#' cdmDisconnect(cdm = cdm)
 #' }
-
+#'
 databaseCharacteristics <- function(cdm,
-                                    omopTableName = c(
-                                      "person", "observation_period", "visit_occurrence",
+                                    omopTableName = c("visit_occurrence", "visit_detail",
                                       "condition_occurrence", "drug_exposure", "procedure_occurrence",
-                                      "device_exposure", "measurement", "observation", "death"
-                                      ),
+                                      "device_exposure", "measurement", "observation", "death"),
+                                    sample = NULL,
                                     sex = FALSE,
                                     ageGroup = NULL,
                                     dateRange = NULL,
                                     interval = "overall",
                                     conceptIdCounts = FALSE,
                                     ...) {
-
   rlang::check_installed("CohortCharacteristics")
   rlang::check_installed("CohortConstructor")
 
-
   cdm <- omopgenerics::validateCdmArgument(cdm)
-  opts <- omopgenerics::omopTables()
+  opts <- clinicalTables()
   opts <- opts[opts %in% names(cdm)]
+  if (missing(omopTableName)) {
+    omopTableName <- omopTableName[omopTableName %in% names(cdm)]
+  }
+
   omopgenerics::assertChoice(omopTableName, choices = opts)
   omopgenerics::assertLogical(sex, length = 1)
   ageGroup <- omopgenerics::validateAgeGroupArgument(ageGroup, multipleAgeGroup = FALSE)
   dateRange <- validateStudyPeriod(cdm, dateRange)
   omopgenerics::assertChoice(interval, c("overall", "years", "quarters", "months"), length = 1)
   omopgenerics::assertLogical(conceptIdCounts, length = 1)
-
+  sample <- validateSample(sample)
   args_list <- list(...)
 
+  empty_tables <- c()
+  for (table in omopTableName) {
+    empty_tables <- c(empty_tables, table[omopgenerics::isTableEmpty(cdm[[table]])])
+  }
+  omopTableName <- omopTableName[!(omopTableName %in% empty_tables)]
   cli::cli_inform(paste("The characterisation will focus on the following OMOP tables: {omopTableName}"))
 
   startTime <- Sys.time()
-  startTables <- CDMConnector::listSourceTables(cdm)
+  startTables <- omopgenerics::listSourceTables(cdm)
+
+  if (!is.null(sample)) {
+    cli::cli_inform(paste("The cdm is sampled to {sample}"))
+    cdm <- sampleCdm(cdm = cdm, tables = c(omopTableName, "observation_period", "person"), sample = sample)
+  }
   result <- list()
   # Snapshot
-  cli::cli_inform(paste(cli::symbol$arrow_right,"Getting cdm snapshot"))
+  cli::cli_inform(paste(cli::symbol$arrow_right, "Getting cdm snapshot"))
   result$snapshot <- summariseOmopSnapshot(cdm)
 
   # Population Characteristics
-  cli::cli_inform(paste(cli::symbol$arrow_right,"Getting population characteristics"))
+  cli::cli_inform(paste(cli::symbol$arrow_right, "Getting population characteristics"))
 
   sexCohort <- if (sex) "Both"
   dateRangeCohort <- dateRange %||% c(NA, NA)
 
 
-  if (!is.null(ageGroup)) {
+  if (!is.null(ageGroup) & omopgenerics::sourceType(cdm) != "local") { #to remove when https://github.com/OHDSI/CohortConstructor/issues/675 is fixed
     cdm <- omopgenerics::bind(
       CohortConstructor::demographicsCohort(cdm, "population_1", sex = sexCohort),
       CohortConstructor::demographicsCohort(cdm, "population_2", sex = sexCohort, ageRange = ageGroup$age_group),
@@ -111,41 +137,16 @@ databaseCharacteristics <- function(cdm,
 
   omopgenerics::dropSourceTable(cdm = cdm, c("population_1", "population_2", "population"))
 
+  # Summarising Person table
+  cli::cli_inform(paste(cli::symbol$arrow_right, "Summarising person table"))
 
-  # Summarise missing data
-  cli::cli_inform(paste(cli::symbol$arrow_right, "Summarising missing data"))
-  result$missingData <- do.call(
-    summariseMissingData,
-    c(list(
-      cdm,
-      omopTableName = omopTableName,
-      sex = sex,
-      ageGroup = ageGroup,
-      interval = interval,
-      dateRange = dateRange
-    ), filter_args(summariseMissingData, args_list))
+  result$person <- do.call(
+    summarisePerson,
+    c(list(cdm), filter_args(summarisePerson, args_list))
   )
-
-  omopTableName <- omopTableName[omopTableName != "person"]
-
-  # Summarise table quality
-  cli::cli_inform(paste(cli::symbol$arrow_right, "Summarising table quality"))
-  result$tableQuality <- do.call(
-    summariseTableQuality,
-    c(list(
-      cdm,
-      omopTableName = omopTableName,
-      sex = sex,
-      ageGroup = ageGroup,
-      interval = interval,
-      dateRange = dateRange
-    ), filter_args(summariseTableQuality, args_list))
-  )
-
 
   if (conceptIdCounts) {
-
-    cli::cli_inform(paste(cli::symbol$arrow_right,"Summarising concept id counts"))
+    cli::cli_inform(paste(cli::symbol$arrow_right, "Summarising concept id counts"))
     result$conceptIdCounts <- do.call(
       summariseConceptIdCounts,
       c(list(
@@ -160,7 +161,7 @@ databaseCharacteristics <- function(cdm,
   }
 
   # Summarise clinical records
-  cli::cli_inform(paste(cli::symbol$arrow_right,"Summarising clinical records"))
+  cli::cli_inform(paste(cli::symbol$arrow_right, "Summarising clinical records"))
   result$clinicalRecords <- do.call(
     summariseClinicalRecords,
     c(list(
@@ -172,44 +173,33 @@ databaseCharacteristics <- function(cdm,
     ), filter_args(summariseClinicalRecords, args_list))
   )
 
-  # Summarize record counts
-  cli::cli_inform(paste(cli::symbol$arrow_right,"Summarising record counts"))
-  result$recordCounts <- do.call(
-    summariseRecordCount,
-    c(list(
-      cdm,
-      omopTableName,
-      sex = sex,
-      ageGroup = ageGroup,
-      interval = interval,
-      dateRange = dateRange
-    ), filter_args(summariseRecordCount, args_list))
-  )
-
-  # Summarize in observation records
-  cli::cli_inform(paste(cli::symbol$arrow_right,"Summarising in observation records, subjects, person-days, age and sex"))
-  result$inObservation <- do.call(
-    summariseInObservation,
-    c(list(
-      cdm$observation_period,
-      output = c("record", "person", "person-days", "age", "sex"),
-      interval = interval,
-      sex = sex,
-      ageGroup = ageGroup,
-      dateRange = dateRange
-    ), filter_args(summariseInObservation, args_list))
-  )
 
   # Summarise observation period
   cli::cli_inform(paste(cli::symbol$arrow_right, "Summarising observation period"))
   result$observationPeriod <- do.call(
     summariseObservationPeriod,
     c(list(
-      cdm$observation_period,
+      cdm,
       sex = sex,
       ageGroup = ageGroup,
       dateRange = dateRange
     ), filter_args(summariseObservationPeriod, args_list))
+  )
+
+  # Summarize in observation records
+  cli::cli_inform(paste(cli::symbol$arrow_right, "Summarising trends: records, subjects, person-days, age and sex"))
+  result$trend <- do.call(
+    summariseTrend,
+    c(list(
+      cdm = cdm,
+      episode = "observation_period",
+      event = c(omopTableName, "observation_period"),
+      output = c("record", "person", "person-days", "age", "sex"),
+      interval = interval,
+      sex = sex,
+      ageGroup = ageGroup,
+      dateRange = dateRange
+    ), filter_args(summariseTrend, args_list))
   )
 
   # Combine results and export
@@ -227,10 +217,10 @@ databaseCharacteristics <- function(cdm,
       dur %% 60 %/% 1, "sec"
     )
   )
-  endTables <- CDMConnector::listSourceTables(cdm)
+  endTables <- omopgenerics::listSourceTables(cdm)
   newTables <- setdiff(endTables, startTables)
 
-  if(length(newTables)) {
+  if (length(newTables)) {
     cli::cli_inform(c(
       "i" = "{length(newTables)} table{?s} created: {.val {newTables}}."
     ))

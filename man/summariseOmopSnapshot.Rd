@@ -3,24 +3,33 @@
 \name{summariseOmopSnapshot}
 \alias{summariseOmopSnapshot}
 \title{Summarise a cdm_reference object creating a snapshot with the metadata of the
-cdm_reference object.}
+cdm_reference object}
 \usage{
 summariseOmopSnapshot(cdm)
 }
 \arguments{
-\item{cdm}{A cdm_reference object.}
+\item{cdm}{A \code{cdm_reference} object. Use \emph{CDMConnector} to create a reference
+to a database or \emph{omock} to create a reference to synthetic data.}
 }
 \value{
-A summarised_result object.
+A \code{summarised_result} object with the results.
 }
 \description{
 Summarise a cdm_reference object creating a snapshot with the metadata of the
-cdm_reference object.
+cdm_reference object
 }
 \examples{
 \donttest{
-cdm <- mockOmopSketch(numberIndividuals = 10)
+library(OmopSketch)
+library(omock)
 
-summariseOmopSnapshot(cdm = cdm)
+cdm <- mockCdmFromDataset(datasetName = "GiBleed", source = "duckdb")
+
+result <- summariseOmopSnapshot(cdm = cdm)
+
+tableOmopSnapshot(result = result)
+
+cdmDisconnect(cdm = cdm)
 }
+
 }

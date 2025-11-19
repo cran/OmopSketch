@@ -2,24 +2,47 @@
 % Please edit documentation in R/tableClinicalRecords.R
 \name{tableClinicalRecords}
 \alias{tableClinicalRecords}
-\title{Create a visual table from a summariseClinicalRecord() output.}
+\title{Create a visual table from a summariseClinicalRecord() output}
 \usage{
-tableClinicalRecords(result, type = "gt")
+tableClinicalRecords(result, type = NULL, style = NULL)
 }
 \arguments{
-\item{result}{Output from summariseClinicalRecords().}
+\item{result}{A summarised_result object (output of
+\code{summariseClinicalRecords()}).}
 
-\item{type}{Type of formatting output table. See \code{visOmopResults::tableType()} for allowed options.}
+\item{type}{Character string specifying the desired output table format. See
+\code{visOmopResults::tableType()} for supported table types. If \code{type = NULL},
+global options (set via \code{visOmopResults::setGlobalTableOptions()}) will be
+used if available; otherwise, a default 'gt' table is created.}
+
+\item{style}{Defines the visual formatting of the table. This argument can be
+provided in one of the following ways:
+\enumerate{
+\item \strong{Pre-defined style}: Use the name of a built-in style (e.g., "darwin").
+See \code{visOmopResults::tableStyle()} for available options.
+\item \strong{YAML file path}: Provide the path to an existing .yml file defining
+a new style.
+\item \strong{List of custome R code}: Supply a block of custom R code or a named
+list describing styles for each table section. This code must be specific to
+the selected table type.
+}
+
+If \code{style = NULL}, the function will use global options
+(see\code{visOmopResults::setGlobalTableOptions()}) or a _brand.yml file
+(if found); otherwise, the default style is applied.}
 }
 \value{
-A formatted table object with the summarised data.
+A formatted table visualisation.
 }
 \description{
-Create a visual table from a summariseClinicalRecord() output.
+Create a visual table from a summariseClinicalRecord() output
 }
 \examples{
 \donttest{
-cdm <- mockOmopSketch()
+library(OmopSketch)
+library(omock)
+
+cdm <- mockCdmFromDataset(datasetName = "GiBleed", source = "duckdb")
 
 summarisedResult <- summariseClinicalRecords(
   cdm = cdm,
@@ -36,6 +59,7 @@ summarisedResult |>
   suppress(minCellCount = 5) |>
   tableClinicalRecords()
 
-PatientProfiles::mockDisconnect(cdm)
+cdmDisconnect(cdm = cdm)
 }
+
 }

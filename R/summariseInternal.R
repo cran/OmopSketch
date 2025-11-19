@@ -30,15 +30,15 @@ summariseCountsInternal <- function(x, strata, counts) {
 }
 summariseMissingInternal <- function(x, strata, columns, cdm, table) {
   q_na <- "sum(as.integer(is.na(.data${columns})), na.rm = TRUE)" |>
-    glue::glue() |>
+    stringr::str_glue() |>
     rlang::set_names(columns) |>
     rlang::parse_exprs()
 
-  columns_zero <- omopgenerics::omopTableFields(cdmVersion = CDMConnector::cdmVersion(cdm)) |>
+  columns_zero <- omopgenerics::omopTableFields(cdmVersion = omopgenerics::cdmVersion(cdm)) |>
     dplyr::filter(.data$cdm_table_name == table & .data$cdm_field_name %in% columns[grepl("_id$", columns)] & .data$cdm_datatype == "integer") |>
     dplyr::pull(.data$cdm_field_name)
   q_zero <- "sum(as.integer(.data${columns_zero}==0), na.rm = TRUE)" |>
-    glue::glue() |>
+    stringr::str_glue() |>
     rlang::set_names(columns_zero) |>
     rlang::parse_exprs()
 
@@ -124,29 +124,13 @@ summariseMissingInternal <- function(x, strata, columns, cdm, table) {
           "estimate_value"
         )))
     } else {
-      zero <- tibble::tibble()
+      zero <- dplyr::tibble()
     }
     dplyr::bind_rows(na, zero)
   }) |>
     dplyr::bind_rows()
 }
-sampleOmopTable <- function(x, sample) {
-  if (is.null(sample)) {
-    return(x)
-  }
-  if (is.infinite(sample)) {
-    return(x)
-  }
-  if (x |> dplyr::tally() |> dplyr::pull() <= sample) {
-    return(x)
-  }
 
-  x <- x |>
-    dplyr::slice_sample(n = sample)
-
-
-  return(x)
-}
 addStratifications <- function(x, indexDate, sex, ageGroup, interval, intervalName, name) {
   # add sex and age_group if needed
   x <- x |>
@@ -158,7 +142,7 @@ addStratifications <- function(x, indexDate, sex, ageGroup, interval, intervalNa
     } else if (interval == "months") {
       q <- 'paste0(as.character(clock::get_year(.data[[indexDate]])), "_", as.character(clock::get_month(.data[[indexDate]])))'
     } else if (interval == "quarters") {
-      q <- 'paste0(as.character(clock::get_year(.data[[indexDate]])), "_Q", as.character(as.integer(((clock::get_month(.data[[indexDate]]) - 1) %/% 3) + 1)))'
+      q <- 'paste0(as.character(clock::get_year(.data[[indexDate]])), "_Q", as.character(as.integer(floor((clock::get_month(.data[[indexDate]]) - 1) / 3) + 1)))'
     }
     q <- q |>
       rlang::set_names(intervalName) |>
@@ -192,7 +176,7 @@ addSexAgeGroup <- function(x, sex, ageGroup, indexDate) {
     dplyr::select(dplyr::any_of(c("person_id", "sex", "birth_date")))
 
   x <- x |>
-    dplyr::inner_join(person, by = "person_id")
+    dplyr::left_join(person, by = "person_id")
 
   if (sex) {
     x <- x |>
@@ -205,7 +189,8 @@ addSexAgeGroup <- function(x, sex, ageGroup, indexDate) {
 
   if (age) {
     qAge <- ageGroupQuery(ageGroup)
-    x <- x %>%
+    x <- x |>
+      datediffYear(start = "birth_date", end = indexDate, name = "xyz_age") |>
       dplyr::mutate(!!!qAge) |>
       dplyr::select(!c("birth_date", "xyz_age"))
   }
@@ -218,16 +203,14 @@ ageGroupQuery <- function(ageGroup) {
       if (is.infinite(x[2])) {
         paste0(".data$xyz_age >= ", x[1], "L ~ '", nm, "'")
       } else {
-        paste0(".data$xyz_age >= ", x[1], "L && .data$xyz_age <= ", x[2], "L ~ '", nm, "'")
+        paste0(".data$xyz_age >= ", x[1], "L & .data$xyz_age <= ", x[2], "L ~ '", nm, "'")
       }
     }),
     '.default = "None"'
   ) |>
     paste0(collapse = ", ")
-  c(
-    xyz_age = 'as.integer(local(CDMConnector::datediff(start = "birth_date", end = indexDate, interval = "year")))',
-    age_group = paste0("dplyr::case_when(", x, ")")
-  ) |>
+  paste0("dplyr::case_when(", x, ")") |>
+    rlang::set_names(nm = "age_group") |>
     rlang::parse_exprs()
 }
 restrictStudyPeriod <- function(omopTable, dateRange) {
@@ -273,18 +256,17 @@ warningEmptyStudyPeriod <- function(omopTable) {
   }
   return(omopTable)
 }
-strataCols <- function(sex = FALSE, ageGroup = NULL, interval = "overall") {
-  c(names(ageGroup), "sex"[sex], "interval"[interval != "overall"])
+strataCols <- function(sex = FALSE, ageGroup = NULL, interval = "overall", inObservation = FALSE) {
+  c(names(ageGroup), "sex"[sex], "interval"[interval != "overall"], "in_observation"[inObservation])
 }
 
 summariseSumInternal <- function(x, strata, variable) {
-
   purrr::map(strata, \(stratak) {
     x |>
       dplyr::group_by(dplyr::across(dplyr::all_of(stratak))) |>
       dplyr::summarise(estimate_value = sum(.data[[variable]], na.rm = TRUE), .groups = "drop") |>
       dplyr::collect() |>
-      dplyr::mutate(estimate_value =  sprintf("%i", as.integer(.data$estimate_value))) |>
+      dplyr::mutate(estimate_value = sprintf("%i", as.integer(.data$estimate_value))) |>
       dplyr::mutate(estimate_type = "integer", estimate_name = "count") |>
       dplyr::select(dplyr::all_of(c(
         stratak, "estimate_name", "estimate_type",
@@ -295,3 +277,53 @@ summariseSumInternal <- function(x, strata, variable) {
 }
 
 
+summariseMedianAge <- function(x, index_date, strata) {
+  x <- x |>
+    PatientProfiles::addAgeQuery(indexDate = index_date)
+
+  purrr::map(strata, \(stratak) {
+    x |>
+      dplyr::select("age", dplyr::all_of(stratak)) |>
+      dplyr::collect() |>
+      dplyr::group_by(dplyr::across(dplyr::all_of(stratak))) |>
+      dplyr::summarise("estimate_value" = stats::median(.data$age))
+  }) |>
+    dplyr::bind_rows() |>
+    dplyr::mutate(
+      estimate_name = "median",
+      estimate_type = "numeric",
+      estimate_value = sprintf("%i", as.integer(.data$estimate_value))
+    )
+}
+
+addInObservation <- function(x, inObservation, cdm, episode, name) {
+  if (!inObservation) {
+    return(x)
+  }
+
+  if (episode) {
+    x <- x |>
+      dplyr::left_join(cdm[["observation_period"]] |> dplyr::select("person_id", "observation_period_start_date", "observation_period_end_date"), by = "person_id") |>
+      dplyr::mutate("in_observation" = dplyr::if_else(
+        !is.na(.data$observation_period_start_date) &
+          .data$start_date >= .data$observation_period_start_date &
+          .data$start_date <= .data$observation_period_end_date &
+          (
+            is.na(.data$end_date) |
+              (.data$end_date >= .data$observation_period_start_date &
+                 .data$end_date <= .data$observation_period_end_date)
+          ),
+        "TRUE",
+        "FALSE"
+      )) |>
+      dplyr::select(-"observation_period_start_date", -"observation_period_end_date") |>
+      dplyr::compute(name = name)
+  } else {
+    x <- x |>
+      dplyr::left_join(cdm[["observation_period"]] |> dplyr::select("person_id", "observation_period_start_date", "observation_period_end_date"), by = "person_id") |>
+      dplyr::mutate("in_observation" = dplyr::if_else(!is.na(.data$observation_period_start_date) & .data$start_date >= .data$observation_period_start_date & .data$start_date <= .data$observation_period_end_date, "TRUE", "FALSE")) |>
+      dplyr::select(-"observation_period_start_date", -"observation_period_end_date") |>
+      dplyr::compute(name = name)
+  }
+  return(x)
+}

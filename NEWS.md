@@ -1,3 +1,40 @@
+# OmopSketch 1.0.0
+
+- Characterise all mock datasets by @catalamarti #430
+- background in shiny by @cecicampanile #431
+- shiny name shiny -> OmopSketchShiny by @catalamarti #432
+- fix plot of characterisation of population in shiny by @cecicampanile #437
+- new function: summariseTrend by @cecicampanile #433
+- add cdm_source in summariseOmopSnapshot by @catalamarti #438
+- new function: summarisePerson by @catalamarti #440
+- summariseObservationPeriod 1.0.0 by @cecicampanile #446
+- summariseClinicalRecords 1.0 by @cecicampanile #443
+- missingness in shiny characteristics by @cecicampanile #450
+- sql translations by @catalamarti #449
+- style argument in table and plot functions by @cecicampanile #451
+- Fix: Ensure database compatibility for boolean aggregations in summariseNumeric2 by @merqurio #457
+- Fix documentation for plotObservationPeriod by @cecicampanile #460
+- tableObservationPeriod when byOrder = FALSE by @cecicampanile #459
+- summariseObservationPeriod minor fix by @cecicampanile #463
+- check for person id not in person table in summariseClinicalRecords by @cecicampanile #461
+- fix some test failures by @cecicampanile #469
+- In observation argument by @cecicampanile #470
+- update shinyCharacteristics #454
+- sample to work on the person level by @cecicampanile #458
+- tableConceptIdCounts update by @cecicampanile #476
+- captions in tables by @cecicampanile #477
+- summarisePerson in databaseCharacteristics and shinyCharacteristics by @cecicampanile #478
+- Reduce imports by @catalamarti #503
+- Remove :: from vignettes, readme and examples by @catalamarti #502
+- Use default of style and type = NULL by @catalamarti #498
+- Tidy vignettes by @catalamarti i#508
+- Tidy documentation by @catalamarti #510
+- refine readme by @catalamarti #505
+- scarlet brand in shiny by @cecicampanile #513
+- Test multiple dbms by @catalamarti #514
+- add logo to shiny by @catalamarti #516
+- reduce size of tables before collecting in summariseTrend by @cecicampanile #518
+  
 # OmopSketch 0.5.1
 
 -   removed overall results when plotting trends by @cecicampanile #418

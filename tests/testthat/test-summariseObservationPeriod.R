@@ -30,10 +30,8 @@ test_that("check summariseObservationPeriod works", {
       )
     ),
     cdmName = "mock data"
-  )
-  cdm <- CDMConnector::copyCdmTo(
-    con = connection(), cdm = cdm, schema = schema()
-  )
+  ) |>
+    copyCdm()
 
   # simple run
   expect_no_error(resAll <- summariseObservationPeriod(cdm$observation_period))
@@ -59,11 +57,11 @@ test_that("check summariseObservationPeriod works", {
   # test estimates
   expect_no_error(
     resEst <- cdm$observation_period |>
-      summariseObservationPeriod(estimates = c("mean", "median"))
+      summariseObservationPeriod(estimates = c("mean", "median"), quality = FALSE, missing = FALSE)
   )
   expect_true(all(
     resEst |>
-      dplyr::filter(!.data$variable_name %in% c("Number records", "Number subjects")) |>
+      dplyr::filter(!.data$variable_name %in% c("Number records", "Number subjects", "Type concept id")) |>
       dplyr::pull("estimate_name") |>
       unique() %in% c("mean", "median")
   ))
@@ -170,13 +168,12 @@ test_that("check summariseObservationPeriod works", {
   expect_no_error(resEmpty <- summariseObservationPeriod(cdm$observation_period))
   expect_true(nrow(resEmpty) == 0)
 
-
   # table works
   expect_no_error(tableObservationPeriod(resAll))
   expect_no_error(tableObservationPeriod(resAll, type = "datatable"))
   expect_no_error(tableObservationPeriod(resOne))
   expect_warning(tableObservationPeriod(resEmpty))
-
+  expect_no_error(tableMissingData(resAll))
   # plot works
   expect_no_error(plotObservationPeriod(resAll))
   expect_no_error(plotObservationPeriod(resOne))
@@ -225,7 +222,7 @@ test_that("check summariseObservationPeriod works", {
         variableName = "Duration in days", plotType = "densityplot"
       )
   )
- expect_no_error(
+  expect_no_error(
     resAllD |>
       plotObservationPeriod(
         variableName = "Duration in days", plotType = "densityplot"
@@ -298,66 +295,7 @@ test_that("check summariseObservationPeriod works", {
       )
   )
 
-  PatientProfiles::mockDisconnect(cdm = cdm)
-})
-
-test_that("check it works with mockOmopSketch", {
-  skip_on_cran()
-  cdm <- mockOmopSketch(numberIndividuals = 5, seed = 1)
-
-  sop <- summariseObservationPeriod(cdm$observation_period)
-
-  # counts
-  expect_identical(sop$estimate_value[sop$variable_name == "Number records"], "5")
-  x <- dplyr::tibble(
-    strata_level = c("overall", "1st"),
-    variable_name = "Number subjects",
-    estimate_value = c("5", "5")
-  )
-  expect_identical(nrow(x), sop |> dplyr::inner_join(x, by = colnames(x)) |> nrow())
-
-  # records per person
-  expect_identical(
-    sop |>
-      dplyr::filter(
-        variable_name == "Records per person", estimate_name != "sd", !grepl("density", estimate_name)
-      ) |>
-      dplyr::pull("estimate_value"),
-    c(rep("1", 8))
-  )
-
-  # duration
-  expect_identical(
-    sop |>
-      dplyr::filter(variable_name == "Duration in days", estimate_name %in% c("min", "q25", "median", "q75", "max")) |>
-      dplyr::pull("estimate_value") |>
-      unique() |>
-      sort(),
-    as.character(
-      cdm$observation_period |>
-        dplyr::mutate(duration = observation_period_end_date - observation_period_start_date + 1) |>
-        dplyr::pull(duration) |>
-        as.character() |>
-        sort()
-    )
-  )
-
-  # days to next observation period
-  expect_identical(
-    sop |>
-      dplyr::filter(variable_name == "Days to next observation period") |> nrow(), 0L
-  )
-
-  # Check result type
-  omopgenerics::validateResultArgument(sop)
-
-  # table works
-  expect_no_error(tableObservationPeriod(sop))
-
-  # plot works
-  expect_no_error(plotObservationPeriod(sop))
-
-  PatientProfiles::mockDisconnect(cdm = cdm)
+  dropCreatedTables(cdm = cdm)
 })
 
 test_that("check summariseObservationPeriod strata works", {
@@ -393,10 +331,8 @@ test_that("check summariseObservationPeriod strata works", {
       )
     ),
     cdmName = "mock data"
-  )
-  cdm <- CDMConnector::copyCdmTo(
-    con = connection(), cdm = cdm, schema = schema()
-  )
+  ) |>
+    copyCdm()
 
   # simple run
   expect_no_error(summariseObservationPeriod(cdm$observation_period,
@@ -410,7 +346,9 @@ test_that("check summariseObservationPeriod strata works", {
   expect_no_error(resStrata <- summariseObservationPeriod(cdm$observation_period,
     estimates = c("mean", "sd", "min", "max", "median", "density"),
     ageGroup = list("<10" = c(0, 9), ">=10" = c(10, Inf)),
-    sex = TRUE
+    sex = TRUE,
+    quality = FALSE,
+    missingData = FALSE
   ))
   expect_equal(
     resStrata |> dplyr::filter(group_level == "all" & strata_level == "overall") |> dplyr::distinct(variable_name),
@@ -514,15 +452,13 @@ test_that("check summariseObservationPeriod strata works", {
       )
   )
 
-  PatientProfiles::mockDisconnect(cdm = cdm)
+  dropCreatedTables(cdm = cdm)
 })
-
 
 test_that("dateRnge argument works", {
   skip_on_cran()
   # Load mock database ----
   cdm <- cdmEunomia()
-
 
   expect_no_error(summariseObservationPeriod(cdm$observation_period, dateRange = as.Date(c("1940-01-01", "2018-01-01"))))
   expect_message(x <- summariseObservationPeriod(cdm$observation_period, dateRange = as.Date(c("1940-01-01", "2024-01-01")), estimates = "min"))
@@ -543,21 +479,27 @@ test_that("dateRnge argument works", {
 
   ageGroup <- lapply(split(0:99, (0:99) %/% 2), c)
   expect_no_error(result <- summariseObservationPeriod(cdm$observation_period, ageGroup = ageGroup, dateRange = as.Date(c("2015-01-01", "2018-01-01"))))
-  x <- result |> omopgenerics::splitStrata() |> dplyr::filter(age_group == "overall", variable_name == "Number records") |> dplyr::pull(estimate_value) |> as.numeric()
-  y <- cdm$observation_period |> dplyr::filter(.data$observation_period_end_date >= as.Date("2015-01-01") & .data$observation_period_start_date <= as.Date("2018-01-01") ) |>
-    dplyr::tally() |> dplyr::pull(n)
-  expect_equal(x,y)
+  x <- result |>
+    omopgenerics::splitStrata() |>
+    dplyr::filter(age_group == "overall", variable_name == "Number records") |>
+    dplyr::pull(estimate_value) |>
+    as.numeric()
+  y <- cdm$observation_period |>
+    dplyr::filter(.data$observation_period_end_date >= as.Date("2015-01-01") & .data$observation_period_start_date <= as.Date("2018-01-01")) |>
+    dplyr::tally() |>
+    dplyr::pull("n") |>
+    as.numeric()
+  expect_equal(x, y)
 
-  PatientProfiles::mockDisconnect(cdm = cdm)
+  dropCreatedTables(cdm = cdm)
 })
-
 
 test_that("no tables created", {
   skip_on_cran()
   # Load mock database ----
   cdm <- cdmEunomia()
 
-  startNames <- CDMConnector::listSourceTables(cdm)
+  startNames <- omopgenerics::listSourceTables(cdm)
 
   results <- summariseObservationPeriod(cdm$observation_period,
     sex = TRUE,
@@ -569,54 +511,124 @@ test_that("no tables created", {
     dateRange = as.Date(c("2012-01-01", "2018-01-01"))
   )
 
-
-  endNames <- CDMConnector::listSourceTables(cdm)
+  endNames <- omopgenerics::listSourceTables(cdm)
 
   expect_true(length(setdiff(endNames, startNames)) == 0)
 
-
-  PatientProfiles::mockDisconnect(cdm = cdm)
+  dropCreatedTables(cdm = cdm)
 })
 
-test_that("byOrdinal works", {
+test_that("missingData works", {
   skip_on_cran()
   # Load mock database ----
-  cdm <- omopgenerics::cdmFromTables(
-    tables = list(
-      person = dplyr::tibble(
-        person_id = as.integer(1:4),
-        gender_concept_id = c(8507L, 8532L, 8532L, 8507L),
-        year_of_birth = 2010L,
-        month_of_birth = 1L,
-        day_of_birth = 1L,
-        race_concept_id = 0L,
-        ethnicity_concept_id = 0L
-      ),
-      observation_period = dplyr::tibble(
-        observation_period_id = as.integer(1:8),
-        person_id = c(1, 1, 1, 2, 2, 3, 3, 4) |> as.integer(),
-        observation_period_start_date = as.Date(c(
-          "2020-03-01", "2020-03-25", "2020-04-25", "2020-08-10", "2020-03-10",
-          "2020-03-01", "2020-04-10", "2020-03-10"
-        )),
-        observation_period_end_date = as.Date(c(
-          "2020-03-20", "2020-03-30", "2020-08-15", "2020-12-31", "2020-03-27",
-          "2020-03-09", "2020-05-08", "2020-12-10"
-        )),
-        period_type_concept_id = 0L
+  cdm <- cdmEunomia()
+
+  expect_no_error(x <- summariseObservationPeriod(cdm = cdm))
+  expect_true(all(c("na_count", "na_percentage", "zero_count", "zero_percentage") %in% unique(x$estimate_name)))
+  x <- x |>
+    dplyr::filter(.data$group_level != "all")
+  expect_true(!(any(c("na_count", "na_percentage", "zero_count", "zero_percentage") %in% unique(x$estimate_name))))
+
+  expect_no_error(x <- summariseObservationPeriod(cdm, quality = F))
+
+  y <- summariseMissingData(cdm, "observation_period")
+
+  expect_equal(x |> dplyr::filter(variable_name == "Column name") |> dplyr::select(!c("group_name", "group_level")), y |> dplyr::select(!c("group_name", "group_level")), ignore_attr = TRUE)
+
+  expect_no_error(x <- summariseObservationPeriod(cdm, sex = T, ageGroup = list(c(0, 50), c(51, 100)), quality = F))
+  y <- summariseMissingData(cdm, "observation_period", sex = T, ageGroup = list(c(0, 50), c(51, 100)))
+
+  expect_equal(x |> dplyr::filter(variable_name == "Column name") |> dplyr::arrange(.data$variable_level, .data$strata_name, .data$strata_level) |> dplyr::select(!c("group_name", "group_level")), y |> dplyr::arrange(.data$variable_level, .data$strata_name, .data$strata_level) |> dplyr::select(!c("group_name", "group_level")), ignore_attr = TRUE)
+
+  dropCreatedTables(cdm = cdm)
+})
+
+test_that("quality works", {
+  skip_on_cran()
+  # Load mock database ----
+  cdm <- cdmEunomia()
+
+  expect_no_error(x <- summariseObservationPeriod(cdm, missingData = F, estimates = "mean"))
+  expect_true(all(c("Subjects not in person table", "End date before start date", "Start date before birth date") %in% unique(x$variable_name)))
+  x <- x |>
+    dplyr::filter(.data$group_level != "all")
+  expect_false(any(c("Subjects not in person table", "End date before start date", "Start date before birth date") %in% unique(x$variable_name)))
+
+  expect_no_error(x <- summariseObservationPeriod(cdm, sex = T, ageGroup = list(c(0, 50))))
+  x <- x |>
+    dplyr::filter(.data$strata_level != "overall")
+  expect_false("Subjects not in person table" %in% unique(x$variable_name))
+
+  person_id <- cdm$observation_period |>
+    head(1) |>
+    dplyr::pull(.data$person_id)
+  cdm$person <- cdm$person |> dplyr::filter(.data$person_id != .env$person_id)
+  expect_warning(y <- summariseObservationPeriod(cdm))
+  n_subjects <- cdm$observation_period |> omopgenerics::numberSubjects()
+  expect_equal(y |> dplyr::filter(.data$variable_name == "Subjects not in person table" & .data$estimate_name == "count") |> dplyr::pull(.data$estimate_value), "1")
+  expect_equal(y |> dplyr::filter(.data$variable_name == "Subjects not in person table" & .data$estimate_name == "percentage") |> dplyr::pull(.data$estimate_value), sprintf("%.2f", 100 * 1 / n_subjects))
+
+  ids <- cdm$observation_period |>
+    dplyr::distinct(observation_period_id) |>
+    dplyr::pull()
+  set.seed(123)
+  shuffled <- sample(ids)
+  vec1 <- shuffled[1:10]
+  vec2 <- shuffled[11:20]
+  cdm$observation_period <- cdm$observation_period |>
+    dplyr::mutate(observation_period_start_date = dplyr::if_else(.data$observation_period_id %in% vec1,
+      as.Date("3000-01-01"),
+      dplyr::if_else(.data$observation_period_id %in% vec2,
+        as.Date("1900-01-01"),
+        .data$observation_period_start_date
       )
-    ),
-    cdmName = "mock data"
-  )
-  cdm <- CDMConnector::copyCdmTo(
-    con = connection(), cdm = cdm, schema = schema()
-  )
-  expect_no_error(f <- summariseObservationPeriod(cdm$observation_period, byOrdinal = FALSE))
-  expect_no_error(t <- summariseObservationPeriod(cdm$observation_period, byOrdinal = TRUE))
-  expect_equal(t, summariseObservationPeriod(cdm$observation_period))
-  expect_equal(f, t |> dplyr::filter(group_level == "all"))
-  expect_equal(f |> dplyr::distinct(group_level) |> dplyr::pull(), "all")
+    ))
 
+  x <- summariseObservationPeriod(cdm, missingData = F)
+  y <- cdm$observation_period |>
+    dplyr::filter(.data$observation_period_end_date < .data$observation_period_start_date)
+  z <- cdm$observation_period |>
+    dplyr::inner_join(cdm$person |> dplyr::select(person_id, birth_datetime), by = "person_id") |>
+    dplyr::filter(.data$observation_period_start_date < as.Date(.data$birth_datetime))
 
-  PatientProfiles::mockDisconnect(cdm = cdm)
+  expect_equal(
+    y |> dplyr::tally() |> dplyr::pull("n") |> as.numeric(),
+    x |> dplyr::filter(variable_name == "End date before start date", estimate_name == "count") |> dplyr::pull(estimate_value) |> as.numeric()
+  )
+
+  expect_equal(
+    z |> dplyr::tally() |> dplyr::pull("n") |> as.numeric(),
+    x |> dplyr::filter(variable_name == "Start date before birth date", estimate_name == "count") |> dplyr::pull(estimate_value) |> as.numeric()
+  )
+
+  expect_no_error(x <- summariseObservationPeriod(cdm, missingData = F, sex = TRUE))
+  x <- x |> omopgenerics::splitStrata()
+
+  expect_equal(
+    y |>
+      PatientProfiles::addSexQuery() |>
+      dplyr::filter(sex == "Female") |>
+      dplyr::tally() |>
+      dplyr::pull("n") |>
+      as.numeric(),
+    x |>
+      dplyr::filter(sex == "Female" & variable_name == "End date before start date" & estimate_name == "count") |>
+      dplyr::pull(estimate_value) |>
+      as.numeric()
+  )
+
+  expect_equal(
+    z |>
+      PatientProfiles::addSexQuery() |>
+      dplyr::filter(sex == "Female") |>
+      dplyr::tally() |>
+      dplyr::pull("n") |>
+      as.numeric(),
+    x |>
+      dplyr::filter(sex == "Female" & variable_name == "Start date before birth date" & estimate_name == "count") |>
+      dplyr::pull(estimate_value) |>
+      as.numeric()
+  )
+
+  dropCreatedTables(cdm = cdm)
 })

@@ -2,12 +2,13 @@
 % Please edit documentation in R/plotInObservation.R
 \name{plotInObservation}
 \alias{plotInObservation}
-\title{Create a ggplot2 plot from the output of summariseInObservation().}
+\title{Create a ggplot2 plot from the output of summariseInObservation()}
 \usage{
 plotInObservation(result, facet = NULL, colour = NULL)
 }
 \arguments{
-\item{result}{A summarised_result object (output of summariseInObservation).}
+\item{result}{A summarised_result object (output of
+\code{summariseInObservation()}).}
 
 \item{facet}{Columns to face by. Formula format can be provided. See possible
 columns to face by with: \code{visOmopResults::tidyColumns()}.}
@@ -16,28 +17,31 @@ columns to face by with: \code{visOmopResults::tidyColumns()}.}
 \code{visOmopResults::tidyColumns()}.}
 }
 \value{
-A ggplot showing the table counts
+A plot visualisation.
 }
 \description{
-Create a ggplot2 plot from the output of summariseInObservation().
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
 }
 \examples{
 \donttest{
 library(dplyr)
+library(OmopSketch)
+library(omock)
 
-cdm <- mockOmopSketch()
+cdm <- mockCdmFromDataset(datasetName = "GiBleed", source = "duckdb")
 
 result <- summariseInObservation(
   observationPeriod = cdm$observation_period,
-  output = c("person-days","record"),
+  output = c("person-days", "record"),
   ageGroup = list("<=40" = c(0, 40), ">40" = c(41, Inf)),
   sex = TRUE
 )
 
 result |>
-  filter(variable_name == "Number person-days") |>
+  filter(variable_name == "Person-days") |>
   plotInObservation(facet = "sex", colour = "age_group")
 
-PatientProfiles::mockDisconnect(cdm)
+cdmDisconnect(cdm = cdm)
 }
+
 }

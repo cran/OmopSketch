@@ -2,30 +2,34 @@
 % Please edit documentation in R/tableInObservation.R
 \name{tableInObservation}
 \alias{tableInObservation}
-\title{Create a visual table from a summariseInObservation() result.}
+\title{Create a visual table from a summariseInObservation() result}
 \usage{
 tableInObservation(result, type = "gt")
 }
 \arguments{
-\item{result}{A summarised_result object.}
+\item{result}{A summarised_result object (output of
+\code{summariseInObservation()}).}
 
-\item{type}{Type of formatting output table. See \code{visOmopResults::tableType()} for allowed options. Default is \code{"gt"}}
+\item{type}{Type of formatting output table. See
+\code{visOmopResults::tableType()} for allowed options. Default is \code{"gt"}.}
 }
 \value{
-A formatted table object with the summarised data.
+A formatted table visualisation.
 }
 \description{
-Create a visual table from a summariseInObservation() result.
+\ifelse{html}{\href{https://lifecycle.r-lib.org/articles/stages.html#deprecated}{\figure{lifecycle-deprecated.svg}{options: alt='[Deprecated]'}}}{\strong{[Deprecated]}}
 }
 \examples{
 \donttest{
+library(OmopSketch)
 library(dplyr, warn.conflicts = FALSE)
+library(omock)
 
-cdm <- mockOmopSketch()
+cdm <- mockCdmFromDataset(datasetName = "GiBleed", source = "duckdb")
 
 result <- summariseInObservation(
   observationPeriod = cdm$observation_period,
-  interval = "months",
+  interval = "years",
   output = c("person-days", "record"),
   ageGroup = list("<=60" = c(0, 60), ">60" = c(61, Inf)),
   sex = TRUE
@@ -34,6 +38,7 @@ result <- summariseInObservation(
 result |>
   tableInObservation()
 
-PatientProfiles::mockDisconnect(cdm)
+cdmDisconnect(cdm = cdm)
 }
+
 }

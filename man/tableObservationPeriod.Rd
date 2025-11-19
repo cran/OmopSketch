@@ -2,29 +2,60 @@
 % Please edit documentation in R/tableObservationPeriod.R
 \name{tableObservationPeriod}
 \alias{tableObservationPeriod}
-\title{Create a visual table from a summariseObservationPeriod() result.}
+\title{Create a visual table from a summariseObservationPeriod() result}
 \usage{
-tableObservationPeriod(result, type = "gt")
+tableObservationPeriod(result, type = NULL, style = NULL)
 }
 \arguments{
-\item{result}{A summarised_result object.}
+\item{result}{A summarised_result object (output of
+\code{summariseObservationPeriod()}).}
 
-\item{type}{Type of formatting output table. See \code{visOmopResults::tableType()} for allowed options. Default is \code{"gt"}.}
+\item{type}{Character string specifying the desired output table format. See
+\code{visOmopResults::tableType()} for supported table types. If \code{type = NULL},
+global options (set via \code{visOmopResults::setGlobalTableOptions()}) will be
+used if available; otherwise, a default 'gt' table is created.}
+
+\item{style}{Defines the visual formatting of the table. This argument can be
+provided in one of the following ways:
+\enumerate{
+\item \strong{Pre-defined style}: Use the name of a built-in style (e.g., "darwin").
+See \code{visOmopResults::tableStyle()} for available options.
+\item \strong{YAML file path}: Provide the path to an existing .yml file defining
+a new style.
+\item \strong{List of custome R code}: Supply a block of custom R code or a named
+list describing styles for each table section. This code must be specific to
+the selected table type.
+}
+
+If \code{style = NULL}, the function will use global options
+(see\code{visOmopResults::setGlobalTableOptions()}) or a _brand.yml file
+(if found); otherwise, the default style is applied.}
 }
 \value{
-A formatted table object with the summarised data.
+A formatted table visualisation.
 }
 \description{
-Create a visual table from a summariseObservationPeriod() result.
+Create a visual table from a summariseObservationPeriod() result
 }
 \examples{
 \donttest{
-cdm <- mockOmopSketch(numberIndividuals = 100)
+library(OmopSketch)
+library(dplyr, warn.conflicts = FALSE)
+library(omock)
 
-result <- summariseObservationPeriod(observationPeriod = cdm$observation_period)
+cdm <- mockCdmFromDataset(datasetName = "GiBleed", source = "duckdb")
+
+result <- summariseObservationPeriod(cdm = cdm)
 
 tableObservationPeriod(result = result)
 
-PatientProfiles::mockDisconnect(cdm = cdm)
+plotObservationPeriod(
+  result = result,
+  variableName = "Duration in days",
+  plotType = "boxplot"
+)
+
+cdmDisconnect(cdm = cdm)
 }
+
 }

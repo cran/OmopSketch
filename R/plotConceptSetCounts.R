@@ -1,36 +1,44 @@
-#' Plot the concept counts of a summariseConceptSetCounts output.
+
+#' Plot the concept counts of a summariseConceptSetCounts output
 #'
-#' @param result A summarised_result object (output of summariseConceptSetCounts).
-#' @param facet Columns to face by. Formula format can be provided. See possible
-#' columns to face by with: `visOmopResults::tidyColumns()`.
-#' @param colour Columns to colour by. See possible columns to colour by with:
-#' `visOmopResults::tidyColumns()`.
-#' @return A ggplot2 object showing the concept counts.
+#' `r lifecycle::badge('deprecated')`
+#'
+#' @param result A summarised_result object (output of
+#' `summariseConceptSetCounts()`).
+#' @inheritParams consistent-doc
+#'
+#' @return A plot visualisation.
 #' @export
+#'
 #' @examples
 #' \donttest{
 #' library(dplyr)
+#' library(OmopSketch)
+#' library(omock)
 #'
-#' cdm <- mockOmopSketch()
+#' cdm <- mockCdmFromDataset(datasetName = "GiBleed", source = "duckdb")
 #'
 #' result <- summariseConceptSetCounts(
 #'   cdm = cdm,
 #'   conceptSet = list(
-#'     "asthma" = c(4051466, 317009) ,
+#'     "asthma" = c(4051466, 317009),
 #'     "rhinitis" = c(4280726, 4048171, 40486433)
 #'   )
 #' )
 #'
 #' result |>
 #'   filter(variable_name == "Number subjects") |>
-#'   plotConceptSetCounts(facet = "codelist_name", colour = "standard_concept_name")
+#'   plotConceptSetCounts(
+#'     facet = "codelist_name",
+#'     colour = "standard_concept_name"
+#'   )
 #'
-#' PatientProfiles::mockDisconnect(cdm)
+#' cdmDisconnect(cdm = cdm)
 #' }
+#'
 plotConceptSetCounts <- function(result,
                                  facet = NULL,
                                  colour = NULL) {
-
   lifecycle::deprecate_warn(
     when = "0.5.0",
     what = "plotConceptSetCounts()",

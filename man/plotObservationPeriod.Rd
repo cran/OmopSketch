@@ -2,48 +2,66 @@
 % Please edit documentation in R/plotObservationPeriod.R
 \name{plotObservationPeriod}
 \alias{plotObservationPeriod}
-\title{Create a plot from the output of summariseObservationPeriod().}
+\title{Create a plot from the output of summariseObservationPeriod()}
 \usage{
 plotObservationPeriod(
   result,
   variableName = "Number subjects",
   plotType = "barplot",
   facet = NULL,
-  colour = NULL
+  colour = NULL,
+  style = NULL
 )
 }
 \arguments{
-\item{result}{A summarised_result object.}
+\item{result}{A summarised_result object (output of
+\code{summariseObservationPeriod()}).}
 
-\item{variableName}{The variable to plot it can be: "number subjects",
-"records per person", "duration" or "days to next observation period".}
+\item{variableName}{The variable to plot it can be: "Number subjects",
+"Records per person", "Duration in days" or
+"Days to next observation period".}
 
 \item{plotType}{The plot type, it can be: "barplot", "boxplot" or
 "densityplot".}
 
-\item{facet}{Columns to colour by. See possible columns to colour by with:
-\code{visOmopResults::tidyColumns()}.}
+\item{facet}{Columns to face by. Formula format can be provided. See possible
+columns to face by with: \code{visOmopResults::tidyColumns()}.}
 
 \item{colour}{Columns to colour by. See possible columns to colour by with:
 \code{visOmopResults::tidyColumns()}.}
+
+\item{style}{Visual theme to apply. Character, or \code{NULL}. If a character,
+this may be either the name of a built-in style (see
+\code{visOmopResults::plotStyle()}), or a path to a .yml file that defines a
+custom style. If \code{NULL}, the function will use the explicit default style,
+unless a global style option is set (see \code{visOmopResults::setGlobalPlotOptions()})
+or a _brand.yml file is present (in that order).}
 }
 \value{
-A ggplot2 object.
+A plot visualisation.
 }
 \description{
-Create a plot from the output of summariseObservationPeriod().
+Create a plot from the output of summariseObservationPeriod()
 }
 \examples{
 \donttest{
-cdm <- mockOmopSketch(numberIndividuals = 100)
+library(OmopSketch)
+library(dplyr, warn.conflicts = FALSE)
+library(omock)
 
-result <- summariseObservationPeriod(observationPeriod = cdm$observation_period)
+cdm <- mockCdmFromDataset(datasetName = "GiBleed", source = "duckdb")
 
-plotObservationPeriod(result = result,
-    variableName = "Duration in days",
-    plotType = "boxplot"
-  )
+result <- summariseObservationPeriod(cdm = cdm)
 
-PatientProfiles::mockDisconnect(cdm)
+tableObservationPeriod(result = result)
+
+plotObservationPeriod(
+  result = result,
+  variableName = "Duration in days",
+  plotType = "boxplot"
+)
+
+cdmDisconnect(cdm = cdm)
 }
+
 }

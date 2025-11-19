@@ -2,40 +2,66 @@
 % Please edit documentation in R/tableTopConceptCounts.R
 \name{tableTopConceptCounts}
 \alias{tableTopConceptCounts}
-\title{Create a visual table of the most common concepts from \code{summariseConceptIdCounts()} output.
-This function takes a \code{summarised_result} object and generates a formatted table highlighting the most frequent concepts.}
+\title{Create a visual table of the most common concepts from
+\code{summariseConceptIdCounts()} output}
 \usage{
-tableTopConceptCounts(result, top = 10, countBy = NULL, type = "gt")
+tableTopConceptCounts(
+  result,
+  top = 10,
+  countBy = NULL,
+  type = NULL,
+  style = NULL
+)
 }
 \arguments{
-\item{result}{A \code{summarised_result} object, typically returned by \code{summariseConceptIdCounts()}.}
+\item{result}{A summarised_result object (output of
+\code{summariseConceptIdCounts()}).}
 
 \item{top}{Integer. The number of top concepts to display. Defaults to \code{10}.}
 
 \item{countBy}{Either 'person' or 'record'. If NULL whatever is in the data
 is used.}
 
-\item{type}{Character. The output table format. Defaults to \code{"gt"}. Use \code{visOmopResults::tableType()} to see all supported formats.}
+\item{type}{Character string specifying the desired output table format. See
+\code{visOmopResults::tableType()} for supported table types. If \code{type = NULL},
+global options (set via \code{visOmopResults::setGlobalTableOptions()}) will be
+used if available; otherwise, a default 'gt' table is created.}
+
+\item{style}{Defines the visual formatting of the table. This argument can be
+provided in one of the following ways:
+\enumerate{
+\item \strong{Pre-defined style}: Use the name of a built-in style (e.g., "darwin").
+See \code{visOmopResults::tableStyle()} for available options.
+\item \strong{YAML file path}: Provide the path to an existing .yml file defining
+a new style.
+\item \strong{List of custome R code}: Supply a block of custom R code or a named
+list describing styles for each table section. This code must be specific to
+the selected table type.
+}
+
+If \code{style = NULL}, the function will use global options
+(see\code{visOmopResults::setGlobalTableOptions()}) or a _brand.yml file
+(if found); otherwise, the default style is applied.}
 }
 \value{
-A formatted table object displaying the top concepts from the summarised data.
+A formatted table visualisation.
 }
 \description{
-Create a visual table of the most common concepts from \code{summariseConceptIdCounts()} output.
-This function takes a \code{summarised_result} object and generates a formatted table highlighting the most frequent concepts.
+This function takes a \code{summarised_result} object and generates a formatted
+table highlighting the most frequent concepts.
 }
 \examples{
 \donttest{
 library(OmopSketch)
-library(CDMConnector)
-library(duckdb)
+library(omock)
 
-requireEunomia()
-con <- dbConnect(drv = duckdb(dbdir = eunomiaDir()))
-cdm <- cdmFromCon(con = con, cdmSchema = "main", writeSchema = "main")
+cdm <- mockCdmFromDataset(datasetName = "GiBleed", source = "duckdb")
 
 result <- summariseConceptIdCounts(cdm = cdm, omopTableName = "condition_occurrence")
 
 tableTopConceptCounts(result = result, top = 5)
+
+cdmDisconnect(cdm = cdm)
 }
+
 }
