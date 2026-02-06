@@ -13,7 +13,7 @@ summariseCountsInternal <- function(x, strata, counts) {
       dplyr::summarise(!!!q, .groups = "drop") |>
       dplyr::collect() |>
       dplyr::mutate(dplyr::across(
-        dplyr::all_of(names(q)), \(x) sprintf("%i", as.integer(x))
+        dplyr::all_of(names(q)), printInteger
       )) |>
       tidyr::pivot_longer(
         cols = dplyr::all_of(names(q)),
@@ -29,7 +29,7 @@ summariseCountsInternal <- function(x, strata, counts) {
     dplyr::bind_rows()
 }
 summariseMissingInternal <- function(x, strata, columns, cdm, table) {
-  q_na <- "sum(as.integer(is.na(.data${columns})), na.rm = TRUE)" |>
+  q_na <- "sum(dplyr::if_else(is.na(.data${columns}), 1, 0), na.rm = TRUE)" |>
     stringr::str_glue() |>
     rlang::set_names(columns) |>
     rlang::parse_exprs()
@@ -37,7 +37,7 @@ summariseMissingInternal <- function(x, strata, columns, cdm, table) {
   columns_zero <- omopgenerics::omopTableFields(cdmVersion = omopgenerics::cdmVersion(cdm)) |>
     dplyr::filter(.data$cdm_table_name == table & .data$cdm_field_name %in% columns[grepl("_id$", columns)] & .data$cdm_datatype == "integer") |>
     dplyr::pull(.data$cdm_field_name)
-  q_zero <- "sum(as.integer(.data${columns_zero}==0), na.rm = TRUE)" |>
+  q_zero <- "sum(dplyr::if_else(.data${columns_zero} == 0, 1, 0), na.rm = TRUE)" |>
     stringr::str_glue() |>
     rlang::set_names(columns_zero) |>
     rlang::parse_exprs()
@@ -50,7 +50,7 @@ summariseMissingInternal <- function(x, strata, columns, cdm, table) {
       dplyr::collect() |>
       dplyr::mutate(dplyr::across(
         dplyr::all_of(names(q_na)),
-        ~ dplyr::coalesce(.x, 0L)
+        ~ dplyr::coalesce(.x, 0)
       )) |>
       dplyr::mutate(dplyr::across(
         dplyr::all_of(names(q_na)),
@@ -58,7 +58,7 @@ summariseMissingInternal <- function(x, strata, columns, cdm, table) {
         .names = "percentage_{.col}"
       )) |>
       dplyr::mutate(dplyr::across(
-        dplyr::all_of(names(q_na)), \(x) sprintf("%i", as.integer(x))
+        dplyr::all_of(names(q_na)), printInteger
       )) |>
       dplyr::rename_with(\(x) paste0("count_", x), .cols = dplyr::all_of(names(q_na))) |>
       dplyr::select(!"total_counts") |>
@@ -98,7 +98,7 @@ summariseMissingInternal <- function(x, strata, columns, cdm, table) {
           .names = "percentage_{.col}"
         )) |>
         dplyr::mutate(dplyr::across(
-          dplyr::all_of(names(q_zero)), \(x) sprintf("%i", as.integer(x))
+          dplyr::all_of(names(q_zero)), printInteger
         )) |>
         dplyr::rename_with(\(x) paste0("count_", x), .cols = dplyr::all_of(names(q_zero))) |>
         dplyr::select(!"total_counts") |>
@@ -266,7 +266,7 @@ summariseSumInternal <- function(x, strata, variable) {
       dplyr::group_by(dplyr::across(dplyr::all_of(stratak))) |>
       dplyr::summarise(estimate_value = sum(.data[[variable]], na.rm = TRUE), .groups = "drop") |>
       dplyr::collect() |>
-      dplyr::mutate(estimate_value = sprintf("%i", as.integer(.data$estimate_value))) |>
+      dplyr::mutate(estimate_value = printInteger(.data$estimate_value)) |>
       dplyr::mutate(estimate_type = "integer", estimate_name = "count") |>
       dplyr::select(dplyr::all_of(c(
         stratak, "estimate_name", "estimate_type",
@@ -326,4 +326,13 @@ addInObservation <- function(x, inObservation, cdm, episode, name) {
       dplyr::compute(name = name)
   }
   return(x)
+}
+
+
+printInteger <- function(x){
+  if(inherits(x, "integer64")){
+    as.character(round(x, digits = 0))
+  } else {
+    sprintf("%.0f", x)
+  }
 }

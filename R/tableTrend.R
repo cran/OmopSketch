@@ -32,6 +32,9 @@
 #' }
 #'
 tableTrend <- function(result,
+                       header = "cdm_name",
+                       hide = "variable_level",
+                       groupColumn = c("type", "omop_table"),
                        type = NULL,
                        style = NULL) {
   # initial checks
@@ -52,13 +55,12 @@ tableTrend <- function(result,
   # check if it is empty
   if (nrow(result) == 0) {
     warnEmpty("summarise_trend")
-    return(emptyTable(type))
+    return(visOmopResults::emptyTable(type = type, style = style))
   }
 
   additionals <- omopgenerics::additionalColumns(result)
   strata <- omopgenerics::strataColumns(result)
   setting_cols <- omopgenerics::settingsColumns(result)
-  setting_cols <- setting_cols[!setting_cols %in% c("study_period_end", "study_period_start", "interval")]
 
   formatEstimates <- c(
     "N (%)" = "<count> (<percentage>%)",
@@ -73,13 +75,13 @@ tableTrend <- function(result,
   tables <- result$group_level |> unique()
   result |>
     visOmopResults::visOmopTable(
-      header = c("cdm_name", setting_cols[setting_cols!= "type"]),
+      header = header,
       estimateName = formatEstimates,
-      groupColumn = c("type", "omop_table"),
+      groupColumn = groupColumn,
       rename = rename_vec,
       type = type,
       style = style,
-      hide = "variable_level",
+      hide = hide,
       settingsColumn = setting_cols,
       columnOrder = c("variable_name", additionals, strata, "estimate_name"),
       .options = list(merge = "all_columns",

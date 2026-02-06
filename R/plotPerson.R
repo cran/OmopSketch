@@ -31,6 +31,8 @@ plotPerson <- function(result,
                        type = NULL) {
   # check input
   style <- validateStyle(style = style, obj = "plot")
+  omopgenerics::assertChoice(type, choices = visOmopResults::plotType(), length = 1, null = TRUE)
+
   result <- validateResult(
     result = result,
     resultType = "summarise_person",
@@ -102,12 +104,7 @@ plotPersonOpts <- function() {
     "Day of birth", "boxPlot"
   )
 }
-validateStyle <- function(style) {
-  if (identical(style, "scarlet")) {
-    style <- "scarlet"
-  }
-  return(style)
-}
+
 validateResult <- function(result,
                            resultType = NULL,
                            variableName = NULL,

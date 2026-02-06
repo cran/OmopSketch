@@ -235,7 +235,7 @@ test_that("tableClinicalRecords() works", {
   expect_warning(t <- summariseClinicalRecords(cdm, "death"))
   expect_warning(inherits(tableClinicalRecords(t), "gt_tbl"))
   expect_no_error(x <- tableClinicalRecords(summariseClinicalRecords(cdm, "condition_occurrence"), type = "datatable"))
-
+  expect_warning(tableClinicalRecords(omopgenerics::emptySummarisedResult()))
   dropCreatedTables(cdm = cdm)
 })
 
@@ -476,3 +476,12 @@ test_that("argument missingData works", {
 
   dropCreatedTables(cdm = cdm)
 })
+test_that("works with all clinical tables", {
+  skip_on_cran()
+  cdm <- omock::mockCdmFromDataset(datasetName = "synpuf-1k_5.3", source = "duckdb")
+  expect_no_error(summariseClinicalRecords(cdm, omopTableName = "payer_plan_period"))
+  expect_no_error(summariseClinicalRecords(cdm, omopTableName = "drug_era"))
+  expect_no_error(summariseClinicalRecords(cdm, omopTableName = "condition_era"))
+
+})
+

@@ -723,6 +723,12 @@ test_that("tableTrend() works", {
   # Check that works ----
   expect_no_error(x <- tableTrend(summariseTrend(cdm, event = "condition_occurrence")))
   expect_true(inherits(x, "gt_tbl"))
+  x <- summariseTrend(cdm, event = "condition_occurrence")
+  set <- omopgenerics::settings(x) |>
+    dplyr:::mutate(test = "test")
+  x <- omopgenerics::newSummarisedResult(x, settings = set)
+  expect_no_error(tableTrend(x, type = "reactable"))
+
   expect_no_error(y <- tableTrend(summariseTrend(cdm, episode = "observation_period", event = c(
     "observation_period",
     "measurement"
@@ -734,7 +740,7 @@ test_that("tableTrend() works", {
   expect_no_error(x <- tableTrend(summariseTrend(cdm, event = "condition_occurrence"), type = "reactable"))
   expect_no_error(tableTrend(summariseTrend(cdm, event = "condition_occurrence", output = "age")))
   expect_no_error(tableTrend(summariseTrend(cdm, episode = "drug_exposure", event = "condition_occurrence", interval = "years", output = c("age", "record"), sex = TRUE)))
-
+  expect_warning(tableTrend(omopgenerics::emptySummarisedResult()))
   dropCreatedTables(cdm = cdm)
 })
 
@@ -746,10 +752,13 @@ test_that("plotTrend() works", {
   # Check that works ----
   expect_no_error(x <- plotTrend(summariseTrend(cdm, event = "condition_occurrence")))
   expect_true(inherits(x, "ggplot"))
+  expect_no_error(x <- plotTrend(summariseTrend(cdm, event = "condition_occurrence"), type = "plotly"))
+  expect_true(inherits(x, "plotly"))
+  expect_warning(plotTrend(omopgenerics::emptySummarisedResult()))
   expect_no_error(plotTrend(summariseTrend(cdm, episode = "observation_period")))
-  expect_no_error(plotTrend(summariseTrend(cdm, episode = "observation_period", output = "age")))
-  expect_no_error(plotTrend(summariseTrend(cdm, episode = "observation_period", output = c("age", "record"))))
-  expect_no_error(plotTrend(summariseTrend(cdm, episode = "observation_period", output = c("age", "sex")), output = "sex"))
+  expect_no_error(plotTrend(summariseTrend(cdm, episode = "observation_period", output = "age", interval = "years")))
+  expect_no_error(plotTrend(summariseTrend(cdm, episode = "observation_period", output = c("age", "record"), interval = "months")))
+  expect_no_error(plotTrend(summariseTrend(cdm, episode = "observation_period", output = c("person", "person-days"), interval = "quarters"), output = "person-days"))
 
   expect_warning(plotTrend(summariseTrend(cdm, episode = "condition_occurrence", event = "drug_exposure"), colour = NULL, facet = NULL))
 

@@ -1,4 +1,3 @@
-
 #' Visualise the output of `summarisePerson()`
 #'
 #' @param result A summarised_result object (output of `summarisePerson()`).
@@ -22,11 +21,15 @@
 #' }
 #'
 tablePerson <- function(result,
+                        header = "cdm_name",
+                        hide = omopgenerics::settingsColumns(result),
+                        groupColumn = character(),
                         type = NULL,
                         style = NULL) {
   # check input
   result <- omopgenerics::validateResultArgument(result = result)
   style <- validateStyle(style = style, obj = "table")
+  type <- validateType(type)
 
   result <- result |>
     omopgenerics::filterSettings(
@@ -36,30 +39,33 @@ tablePerson <- function(result,
   # check if it is empty
   if (nrow(result) == 0) {
     warnEmpty("summarise_person")
-    return(emptyTable(type))
+    return(visOmopResults::emptyTable(type = type, style = style))
   }
 
   setting_cols <- omopgenerics::settingsColumns(result)
-  setting_cols <- setting_cols[!setting_cols %in% c("study_period_end", "study_period_start")]
 
-  visOmopResults::visOmopTable(
-    result = result,
-    estimateName = c(
-      "N (%)" = "<count> (<percentage>%)",
-      "N" = "<count>",
-      "Missing (%)" = "<count_missing> (<percentage_missing>%)",
-      "Median [Q25 - Q75]" = "<median> [<q25> - <q75>]",
-      "90% Range [Q05 to Q95]" = "<q05> to <q95>",
-      "Range [min to max]" = "<min> to <max>",
-      "Zero count (%)" = "<count_0> (<percentage_0>%)",
-      "Distinct values" = "<distinct_values>"
-    ),
-    header = c("cdm_name", setting_cols),
-    style = style,
-    type = type,
-    settingsColumn = setting_cols,
+  custom_order <- c("Number subjects", "Number subjects not in observation", "Sex", "Sex source", "Race", "Race source", "Ethnicity", "Ethnicity source", "Year of birth", "Month of birth", "Day of birth", "Location", "Provider", "Care site")
 
-    .options = list(caption = "Summary of person table")
-
-  )
+  result |>
+    dplyr::mutate(variable_name = factor(.data$variable_name, levels = custom_order)) |>
+    dplyr::arrange(.data$variable_name, .data$variable_level, .data$estimate_name) |>
+    visOmopResults::visOmopTable(
+      estimateName = c(
+        "N (%)" = "<count> (<percentage>%)",
+        "N" = "<count>",
+        "Missing (%)" = "<count_missing> (<percentage_missing>%)",
+        "Median [Q25 - Q75]" = "<median> [<q25> - <q75>]",
+        "90% Range [Q05 to Q95]" = "<q05> to <q95>",
+        "Range [min to max]" = "<min> to <max>",
+        "Zero count (%)" = "<count_0> (<percentage_0>%)",
+        "Distinct values" = "<distinct_values>"
+      ),
+      header = header,
+      hide = hide,
+      style = style,
+      type = type,
+      groupColumn = groupColumn,
+      settingsColumn = setting_cols,
+      .options = list(caption = "Summary of person table")
+    )
 }

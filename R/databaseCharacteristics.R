@@ -12,7 +12,7 @@
 #' @export
 #'
 #' @examples
-#' \donttest{
+#' \dontrun{
 #' library(OmopSketch)
 #' library(omock)
 #' library(dplyr)
@@ -65,7 +65,7 @@ databaseCharacteristics <- function(cdm,
   dateRange <- validateStudyPeriod(cdm, dateRange)
   omopgenerics::assertChoice(interval, c("overall", "years", "quarters", "months"), length = 1)
   omopgenerics::assertLogical(conceptIdCounts, length = 1)
-  sample <- validateSample(sample)
+  sample <- validateSample(sample = sample, cdm = cdm)
   args_list <- list(...)
 
   empty_tables <- c()
@@ -94,7 +94,7 @@ databaseCharacteristics <- function(cdm,
   dateRangeCohort <- dateRange %||% c(NA, NA)
 
 
-  if (!is.null(ageGroup) & omopgenerics::sourceType(cdm) != "local") { #to remove when https://github.com/OHDSI/CohortConstructor/issues/675 is fixed
+  if (!is.null(ageGroup)) {
     cdm <- omopgenerics::bind(
       CohortConstructor::demographicsCohort(cdm, "population_1", sex = sexCohort),
       CohortConstructor::demographicsCohort(cdm, "population_2", sex = sexCohort, ageRange = ageGroup$age_group),

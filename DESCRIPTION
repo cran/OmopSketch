@@ -1,6 +1,6 @@
 Package: OmopSketch
 Title: Characterise Tables of an OMOP Common Data Model Instance
-Version: 1.0.0
+Version: 1.0.1
 Authors@R: c(
     person( 
         "Marta", "Alcalde-Herraiz", 
@@ -40,7 +40,7 @@ Suggests: CDMConnector (>= 1.3.0), CodelistGenerator,
         knitr, lubridate, odbc, OmopViewer (>= 0.5.0), sortable,
         reactable, remotes, rmarkdown, RPostgres, shinyWidgets,
         testthat (>= 3.0.0), withr, omock (>= 0.4.0), covr, ggplot2,
-        visOmopResults (>= 1.4.0), devtools, usethis
+        visOmopResults (>= 1.4.2), devtools, usethis, plotly
 Config/testthat/edition: 3
 Config/testthat/parallel: true
 Imports: cli, clock, CohortConstructor (>= 0.3.1), dplyr, lifecycle,
@@ -51,7 +51,7 @@ URL: https://OHDSI.github.io/OmopSketch/
 BugReports: https://github.com/OHDSI/OmopSketch/issues
 VignetteBuilder: knitr
 NeedsCompilation: no
-Packaged: 2025-11-19 11:21:05 UTC; orms1215
+Packaged: 2026-02-06 17:08:40 UTC; orms1215
 Author: Marta Alcalde-Herraiz [aut] (ORCID:
     <https://orcid.org/0009-0002-4405-1814>),
   Kim Lopez-Guell [aut] (ORCID: <https://orcid.org/0000-0002-8462-8668>),
@@ -61,4 +61,4 @@ Author: Marta Alcalde-Herraiz [aut] (ORCID:
   Edward Burn [aut] (ORCID: <https://orcid.org/0000-0002-9286-1128>),
   Martí Català [aut] (ORCID: <https://orcid.org/0000-0003-3308-9905>)
 Repository: CRAN
-Date/Publication: 2025-11-19 12:10:08 UTC
+Date/Publication: 2026-02-06 17:50:09 UTC

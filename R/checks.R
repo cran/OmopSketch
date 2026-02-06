@@ -1,11 +1,3 @@
-#' @noRd
-checkInterval <- function(interval, call = parent.frame()) {
-  omopgenerics::assertCharacter(interval, length = 1, na = FALSE, null = FALSE, call = call)
-
-  if (!interval %in% c("year", "month")) {
-    cli::cli_abort("Interval argument {interval} is not valid. Valid options are either `year` or `month`.", call = call)
-  }
-}
 
 validateIntervals <- function(interval, call = parent.frame()) {
   omopgenerics::assertCharacter(interval, length = 1, na = FALSE, null = FALSE, call = call)
@@ -28,74 +20,6 @@ validateIntervals <- function(interval, call = parent.frame()) {
   }
 
   return(list("interval" = interval, "unitInterval" = unitInterval))
-}
-
-#' @noRd
-checkCategory <- function(category, overlap = FALSE, type = "numeric", call = parent.frame()) {
-  omopgenerics::assertList(
-    category,
-    types = type, any.missing = FALSE, unique = TRUE,
-    min.len = 1
-  )
-
-  if (is.null(names(category))) {
-    names(category) <- rep("", length(category))
-  }
-
-  # check length
-  category <- lapply(category, function(x) {
-    if (length(x) == 1) {
-      x <- c(x, x)
-    } else if (length(x) > 2) {
-      cli::cli_abort(
-        paste0(
-          "Categories should be formed by a lower bound and an upper bound, ",
-          "no more than two elements should be provided."
-        ),
-        call. = FALSE
-      )
-    }
-    invisible(x)
-  })
-
-  # check lower bound is smaller than upper bound
-  checkLower <- unlist(lapply(category, function(x) {
-    x[1] <= x[2]
-  }))
-  if (!(all(checkLower))) {
-    cli::cli_abort("Lower bound should be equal or smaller than upper bound", call = call)
-  }
-
-  # built tibble
-  result <- lapply(category, function(x, call = parent.frame()) {
-    dplyr::tibble(lower_bound = x[1], upper_bound = x[2])
-  }) |>
-    dplyr::bind_rows() |>
-    dplyr::mutate(category_label = names(.env$category)) |>
-    dplyr::mutate(category_label = dplyr::if_else(
-      .data$category_label == "",
-      dplyr::case_when(
-        is.infinite(.data$lower_bound) & is.infinite(.data$upper_bound) ~ "any",
-        is.infinite(.data$lower_bound) ~ paste(.data$upper_bound, "or below"),
-        is.infinite(.data$upper_bound) ~ paste(.data$lower_bound, "or above"),
-        TRUE ~ paste(.data$lower_bound, "to", .data$upper_bound)
-      ),
-      .data$category_label
-    )) |>
-    dplyr::arrange(.data$lower_bound)
-
-  # check overlap
-  if (!overlap) {
-    if (nrow(result) > 1) {
-      lower <- result$lower_bound[2:nrow(result)]
-      upper <- result$upper_bound[1:(nrow(result) - 1)]
-      if (!all(lower > upper)) {
-        cli::cli_abort("There can not be overlap between categories", call = call)
-      }
-    }
-  }
-
-  invisible(result)
 }
 
 #' @noRd
@@ -187,11 +111,15 @@ validateBackground <- function(background, call = parent.frame()) {
 }
 
 #' @noRd
-validateSample <- function( sample, call = parent.frame()) {
+validateSample <- function( sample, cdm, call = parent.frame()) {
   if(!is.null(sample)) {
   msg <- "'sample' must be either an integer or the name of an existing cohort in the cdm"
   if (is.numeric(sample)) {
     omopgenerics::assertNumeric(sample,integerish = TRUE, min = 1, length = 1, null = TRUE, call = call, msg = msg)
+    if (sample >= omopgenerics::numberSubjects(cdm[["person"]])) {
+      cli::cli_inform("The {.field person} table has \u2264 {.val {sample}} subjects; skipping sampling of the CDM.", call = call)
+      sample = NULL
+    }
   } else if (is.character(sample)) {
     omopgenerics::assertCharacter(sample, length = 1, call = call, msg = msg)
   } else {
