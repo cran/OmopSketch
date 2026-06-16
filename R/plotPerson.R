@@ -54,19 +54,24 @@ plotPerson <- function(result,
     return(visOmopResults::emptyPlot(subtitle = mes, type = type, style = style))
   }
   pt <- opts$plot_type[opts$variable_name == variableName]
-
+  result <- result |> dplyr::filter(.data$variable_name == .env$variableName)
   if (pt == "barPlot") {
     if (all(is.na(result$variable_level))) {
       colour <- "variable_name"
+      legend_label <- character()
     } else {
       colour <- "variable_level"
+      legend_label <- variableName
     }
     if ("percentage" %in% unique(result$estimate_name)) {
       y <- "percentage"
     } else {
       y <- "count"
     }
-    p <- visOmopResults::barPlot(
+    result <- result |>
+      dplyr::filter(.data$estimate_name == .env$y)
+    if(nrow(result)>0){
+      p <- visOmopResults::barPlot(
       result = result,
       x = "cdm_name",
       y = y,
@@ -74,7 +79,13 @@ plotPerson <- function(result,
       style = style,
       type = type,
       colour = colour
-    )
+      )
+    } else {
+      mes <- paste0(
+       "Results don't contain any counts for ", variableName
+       )
+      return(visOmopResults::emptyPlot(subtitle = mes, type = type, style = style))
+      }
   } else {
     p <- visOmopResults::boxPlot(
       result = result,
@@ -83,8 +94,20 @@ plotPerson <- function(result,
       style = style,
       type = type
     )
+    legend_label <- "Database"
   }
 
+  if(inherits(p, "ggplot")) {
+    p <- p +
+      ggplot2::labs(colour = legend_label,
+                fill = legend_label)
+  } else if(inherits(p, "plotly")) {
+  p <- plotly::layout(
+    p,
+    legend = list(
+      title = list(text = legend_label)
+    )
+  ) }
   return(p)
 }
 
@@ -99,6 +122,9 @@ plotPersonOpts <- function() {
     "Race source", "barPlot",
     "Ethnicity", "barPlot",
     "Ethnicity source", "barPlot",
+    "Location", "barPlot",
+    "Provider",  "barPlot",
+    "Care site", "barPlot",
     "Year of birth", "boxPlot",
     "Month of birth", "boxPlot",
     "Day of birth", "boxPlot"

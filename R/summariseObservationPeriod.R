@@ -86,6 +86,11 @@ summariseObservationPeriod <- function(cdm,
   omopgenerics::assertLogical(byOrdinal)
 
   tablePrefix <- omopgenerics::tmpPrefix()
+  on.exit(
+    omopgenerics::dropSourceTable(
+      cdm = cdm, name = dplyr::starts_with(tablePrefix)
+    )
+  )
 
   strata <- c(list(character()), omopgenerics::combineStrata(strataCols(sex = sex, ageGroup = ageGroup)))
 
@@ -129,7 +134,7 @@ summariseObservationPeriod <- function(cdm,
   }
 
   result <- list()
-
+  additional_cols <- character()
   summarisedResult <- obs |>
     PatientProfiles::summariseResult(
       strata = strata,
@@ -235,12 +240,21 @@ summariseObservationPeriod <- function(cdm,
 
 
   if (missingData) {
-    result$missingData <- summariseMissingDataFromTable(omopTable = observationPeriodStrata, table = "observation_period", cdm = cdm, strata = strata, col = NULL, sex = FALSE, ageGroup = NULL, dateRange = NULL, interval = "overall") |>
+    result$missingData <- summariseMissingDataFromTable(omopTable = observationPeriodStrata,
+                                                        table = "observation_period",
+                                                        cdm = cdm,
+                                                        strata = strata,
+                                                        col = NULL,
+                                                        sex = FALSE,
+                                                        ageGroup = NULL,
+                                                        dateRange = NULL,
+                                                        interval = "overall") |>
       dplyr::mutate(
         variable_name = "Column name",
         variable_level = .data$column_name
       ) |>
       dplyr::select(!c("omop_table", "column_name"))
+    additional_cols <- c(additional_cols, "is_required")
   }
 
   variables_percentage <- c("Start date before birth date", "End date before start date", "Type concept id")
@@ -248,9 +262,10 @@ summariseObservationPeriod <- function(cdm,
     dplyr::filter(.data$variable_name == "Number records" & .data$group_level == "all") |>
     dplyr::select("strata_name", "strata_level", den = "estimate_value")
 
-  summarisedResult <- summarisedResult |> dplyr::bind_rows(
+  summarisedResult <- summarisedResult |>
+    dplyr::bind_rows(
     result |> dplyr::bind_rows() |>
-      omopgenerics::uniteAdditional() |>
+      omopgenerics::uniteAdditional(cols = additional_cols) |>
       omopgenerics::uniteStrata(cols = strataCols(sex = sex, ageGroup = ageGroup)) |>
       dplyr::mutate(
         group_name = "observation_period_ordinal",
